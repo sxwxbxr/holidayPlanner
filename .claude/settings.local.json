@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:animate-ui.com)",
+      "Bash(npm install:*)",
+      "Bash(npx shadcn@latest add:*)"
+    ]
+  }
+}
