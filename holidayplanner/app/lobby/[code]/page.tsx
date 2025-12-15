@@ -21,17 +21,22 @@ export default function LobbyPage({ params }: LobbyPageProps) {
   const { code } = use(params);
   const { lobby, currentUser } = useLobbyStore();
   const { joinLobby, isLoading } = useLobby(code);
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState<Date | null>(null);
 
-  if (!mounted) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
-  }
+  useEffect(() => {
+    // Initialize current month only on client to avoid hydration mismatch
+    setCurrentMonth(new Date());
+  }, []);
 
   useEffect(() => {
     if (currentUser) {
       joinLobby(currentUser.id, currentUser.name, currentUser.color);
     }
   }, [currentUser, joinLobby]);
+
+  if (!mounted || !currentMonth) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
