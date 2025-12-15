@@ -1,75 +1,48 @@
-// Unique identifier type for API-readiness
+// Unique identifier type
 export type UUID = string;
 
-// Base entity with common fields
-export interface BaseEntity {
+// User in a lobby
+export interface User {
   id: UUID;
+  name: string;
+  color: string;
+}
+
+// Time block representing availability
+export interface TimeBlock {
+  id: UUID;
+  userId: UUID;
+  startTime: Date;
+  endTime: Date;
+  title?: string; // e.g., "Available to game", "Free to hang"
+  description?: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
-// Participant/Person model
-export interface Participant extends BaseEntity {
+// Lobby state
+export interface Lobby {
+  code: string;
   name: string;
-  email: string;
-  avatarUrl?: string;
-  color: string;
+  users: User[];
+  timeBlocks: TimeBlock[];
+  createdAt: Date;
 }
 
-// Activity categories
-export type ActivityCategory =
-  | "transport"
-  | "accommodation"
-  | "dining"
-  | "sightseeing"
-  | "adventure"
-  | "relaxation"
-  | "other";
-
-// Activity within a trip
-export interface Activity extends BaseEntity {
-  tripId: UUID;
-  title: string;
-  description?: string;
-  date: Date;
-  startTime?: string; // HH:mm format
-  endTime?: string; // HH:mm format
-  location?: string;
-  assignedParticipantIds: UUID[];
-  category: ActivityCategory;
-}
-
-// Trip model
-export interface Trip extends BaseEntity {
-  name: string;
-  destination: string;
-  description?: string;
-  startDate: Date;
-  endDate: Date;
-  coverImageUrl?: string;
-  participantIds: UUID[];
-  color: string;
-}
-
-// Form types for create/edit operations
-export type CreateTripInput = Omit<Trip, keyof BaseEntity>;
-export type UpdateTripInput = Partial<CreateTripInput>;
-
-export type CreateActivityInput = Omit<Activity, keyof BaseEntity>;
-export type UpdateActivityInput = Partial<CreateActivityInput>;
-
-export type CreateParticipantInput = Omit<Participant, keyof BaseEntity>;
-export type UpdateParticipantInput = Partial<CreateParticipantInput>;
+// Form types
+export type CreateTimeBlockInput = Omit<TimeBlock, "id" | "createdAt" | "updatedAt">;
+export type UpdateTimeBlockInput = Partial<CreateTimeBlockInput>;
 
 // Calendar view types
 export interface CalendarDay {
   date: Date;
   isCurrentMonth: boolean;
   isToday: boolean;
-  trips: Trip[];
+  timeBlocks: TimeBlock[];
+  hasOverlap: boolean; // True if multiple users have blocks on this day
 }
 
-// Notification types for UI feedback
+// Notification types
 export type NotificationType = "success" | "error" | "info" | "warning";
 
 export interface Notification {
@@ -78,4 +51,18 @@ export interface Notification {
   title: string;
   message?: string;
   duration?: number;
+}
+
+// PartyKit message types
+export type MessageType =
+  | "sync"
+  | "user-joined"
+  | "user-left"
+  | "block-added"
+  | "block-updated"
+  | "block-deleted";
+
+export interface PartyMessage {
+  type: MessageType;
+  data?: Lobby | TimeBlock | User;
 }

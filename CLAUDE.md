@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Holiday Planner - a web-based application for syncing holiday plans between multiple people. Uses Animate UI components for polished animations.
+**Time Sync** - A real-time availability coordination app where friends can sync their free time blocks through lobby-based sessions. Users create or join lobbies via codes, mark when they're available, and see overlapping free time to coordinate hangouts or gaming sessions.
 
 ## Development Commands
 
@@ -19,10 +19,14 @@ npm run start    # Start production server
 npm run lint     # Run ESLint
 ```
 
+**Important**: Before running, set up your Neon database (see Setup section below).
+
 ## Tech Stack
 
 - **Framework**: Next.js 16 with App Router (React Server Components enabled)
 - **Language**: TypeScript (strict mode)
+- **Database**: Neon (Serverless Postgres)
+- **Real-time**: SWR with 3-second polling
 - **Styling**: Tailwind CSS v4 with CSS variables for theming
 - **UI Components**: shadcn/ui (new-york style) + Animate UI
 - **Animations**: Framer Motion (via Animate UI)
@@ -30,22 +34,58 @@ npm run lint     # Run ESLint
 - **Dates**: date-fns
 - **Theming**: next-themes
 
+## Setup
+
+### 1. Create Neon Database
+
+1. Go to [Neon Console](https://console.neon.tech)
+2. Create a new project
+3. Copy your connection string
+
+### 2. Configure Environment Variables
+
+Create `.env.local` file:
+```bash
+DATABASE_URL=postgresql://user:password@ep-xxx.us-east-2.aws.neon.tech/neondb?sslmode=require
+```
+
+### 3. Run Database Migrations
+
+Execute the schema from `lib/db/schema.sql` in your Neon SQL Editor or using psql:
+```bash
+psql $DATABASE_URL < lib/db/schema.sql
+```
+
+### 4. Start Development Server
+
+```bash
+npm run dev
+```
+
 ## Architecture
 
 - `holidayplanner/app/` - Next.js App Router pages and layouts
+  - `page.tsx` - Landing/join page
+  - `lobby/[code]/page.tsx` - Lobby room with calendar
+  - `api/lobbies/` - API routes for lobby operations
+    - `route.ts` - Create lobby
+    - `[code]/route.ts` - Get lobby state
+    - `[code]/join/route.ts` - Join lobby
+    - `[code]/blocks/route.ts` - Add time block
+    - `[code]/blocks/[id]/route.ts` - Update/delete block
 - `holidayplanner/components/` - React components
   - `ui/` - Base shadcn/ui components
   - `animate-ui/` - Animate UI components (Dialog, Sheet, Accordion, Popover, etc.)
-  - `calendar/` - Calendar view components
-  - `trips/` - Trip management components
-  - `participants/` - Participant management components
-  - `activities/` - Activity management components
+  - `lobby/` - Lobby join/info components
+  - `timeblocks/` - Time block form and dialog
   - `layout/` - Header, layout components
   - `providers/` - ThemeProvider
   - `notifications/` - Toast notification container
-- `holidayplanner/store/` - Zustand stores (trips, participants, activities, notifications)
+- `holidayplanner/lib/` - Utility functions and hooks
+  - `db/` - Database connection and schema
+  - `hooks/use-lobby.ts` - SWR hook for lobby data with polling
+- `holidayplanner/store/` - Zustand stores (lobby, notifications)
 - `holidayplanner/types/` - TypeScript type definitions
-- `holidayplanner/lib/` - Utility functions
 
 ## Path Aliases
 
@@ -66,48 +106,74 @@ Example: `npx shadcn@latest add "https://animate-ui.com/r/components-radix-dialo
 
 ---
 
-## IMPLEMENTATION STATUS (In Progress)
+## IMPLEMENTATION STATUS
 
-### Completed:
-1. **Dependencies installed**: zustand, framer-motion, next-themes, date-fns
-2. **Animate UI components installed**: Dialog, Sheet, Accordion, Popover, ThemeToggler, GradientBackground
-3. **Base shadcn components installed**: button, input, label, card, badge, avatar, calendar
-4. **Types created**: `types/index.ts` - Trip, Participant, Activity, Notification types
-5. **Zustand stores created**: trips.ts, participants.ts, activities.ts, notifications.ts
-6. **Utility functions**: `lib/utils.ts` (cn, colors), `lib/date-utils.ts` (date formatting, calendar helpers)
-7. **Layout components**: ThemeProvider, Header with navigation and ThemeTogglerButton
-8. **Root layout updated**: Includes providers, GradientBackground, Header, NotificationContainer
-9. **Calendar components**: CalendarView, CalendarHeader, CalendarDay, CalendarTripBadge
-10. **Trip components**: TripForm, TripDialog, TripCard, TripDetailsSheet, TripList
+### ✅ CORE IMPLEMENTATION COMPLETE
 
-### TODO - Continue from here:
-1. **Create participant components** (IN PROGRESS):
-   - `components/participants/participant-avatar.tsx`
-   - `components/participants/participant-form.tsx`
-   - `components/participants/participant-list.tsx`
-   - `components/participants/participant-popover.tsx`
+**Time Sync** - Real-time availability coordination app
 
-2. **Create activity components**:
-   - `components/activities/activity-card.tsx`
-   - `components/activities/activity-form.tsx`
-   - `components/activities/activity-dialog.tsx`
-   - `components/activities/activity-list.tsx` (uses Accordion)
+**Implemented Features:**
 
-3. **Update pages**:
-   - `app/page.tsx` - Calendar dashboard with TripDialog
-   - `app/trips/page.tsx` - All trips list
-   - `app/trips/[tripId]/page.tsx` - Trip details
-   - `app/participants/page.tsx` - Manage participants
+1. **Backend Infrastructure**:
+   - Neon serverless Postgres database
+   - Next.js API routes for CRUD operations
+   - SWR with 3-second polling for real-time-like updates
+   - Persistent data storage
 
-### Data Models (for reference):
+2. **Lobby System**:
+   - Create lobbies with auto-generated 6-character codes
+   - Join lobbies via code sharing
+   - Persistent lobby state across sessions
+   - Multi-user support (unlimited per lobby)
+   - Lobby info with all users
+
+3. **Time Block Management**:
+   - Add/edit/delete availability blocks
+   - Time range selection (start/end times)
+   - Optional titles and descriptions
+   - Auto-sync every 3 seconds
+   - Immediate refresh after mutations
+
+4. **Calendar View**:
+   - Monthly calendar with time blocks
+   - Color-coded by user
+   - Overlap detection (highlighted when multiple users are free)
+   - Responsive grid layout
+   - Navigate months
+
+5. **UI/UX**:
+   - Clean landing page with create/join options
+   - Loading/synced status indicators
+   - Theme switching (light/dark/system)
+   - Animate UI for smooth transitions
+   - Toast notifications
+
+**Data Models:**
 ```typescript
-// Trip: id, name, destination, description, startDate, endDate, participantIds, color
-// Participant: id, name, email, avatarUrl, color
-// Activity: id, tripId, title, description, date, startTime, endTime, location, category, assignedParticipantIds
+// Lobby: code, name, users[], timeBlocks[]
+// User: id, name, color
+// TimeBlock: id, userId, startTime, endTime, title, description
 ```
 
+### Next Steps (Optional Enhancements):
+- Week view for detailed time blocks
+- Export availability to calendar formats (iCal, Google Calendar)
+- Recurring availability blocks
+- Private/public time blocks
+- Push notifications for overlaps
+- Mobile app (React Native)
+
+### Environment Variables:
+```bash
+DATABASE_URL=postgresql://user:password@ep-xxx.neon.tech/neondb?sslmode=require
+```
+
+### Database Schema:
+- **lobbies**: code (PK), name, created_at
+- **lobby_users**: id (PK), lobby_code (FK), name, color, joined_at, last_seen
+- **time_blocks**: id (PK), lobby_code (FK), user_id (FK), start_time, end_time, title, description, created_at, updated_at
+
 ### Component Usage:
-- **Dialog**: Trip/Activity create/edit forms (use `from="bottom"`)
-- **Sheet**: Trip details panel (`side="right"`)
-- **Accordion**: Activity list grouped by date
-- **Popover**: Quick participant add
+- **Dialog**: Time block forms (use `from="bottom"`)
+- **useLobby hook**: SWR-based data fetching with auto-polling
+- **LobbyStore**: Local state management with Zustand

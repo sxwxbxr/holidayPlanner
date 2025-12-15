@@ -3,7 +3,10 @@
     "allow": [
       "WebFetch(domain:animate-ui.com)",
       "Bash(npm install:*)",
-      "Bash(npx shadcn@latest add:*)"
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm uninstall:*)"
     ]
   }
 }

@@ -1,4 +1,2 @@
-export { useTripsStore } from "./trips";
-export { useParticipantsStore } from "./participants";
-export { useActivitiesStore } from "./activities";
+export { useLobbyStore } from "./lobby";
 export { useNotificationsStore } from "./notifications";
