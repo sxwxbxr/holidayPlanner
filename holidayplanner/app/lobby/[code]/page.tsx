@@ -6,6 +6,7 @@ import { useLobby } from "@/lib/hooks/use-lobby";
 import { useMounted } from "@/lib/hooks/use-mounted";
 import { LobbyInfo } from "@/components/lobby/lobby-info";
 import { TimeBlockDialog } from "@/components/timeblocks/timeblock-dialog";
+import { DayTimelineDialog } from "@/components/timeline/day-timeline-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from "date-fns";
@@ -22,6 +23,7 @@ export default function LobbyPage({ params }: LobbyPageProps) {
   const { lobby, currentUser } = useLobbyStore();
   const { joinLobby, isLoading } = useLobby(code);
   const [currentMonth, setCurrentMonth] = useState<Date | null>(null);
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
 
   useEffect(() => {
     // Initialize current month only on client to avoid hydration mismatch
@@ -137,9 +139,12 @@ export default function LobbyPage({ params }: LobbyPageProps) {
                   return (
                     <div
                       key={index}
+                      onClick={() => blocks.length > 0 && setSelectedDay(day)}
                       className={`min-h-24 p-2 border rounded-md ${
                         isToday ? "bg-primary/5 border-primary" : "bg-card"
-                      } ${hasOverlap ? "ring-2 ring-green-500" : ""}`}
+                      } ${hasOverlap ? "ring-2 ring-green-500" : ""} ${
+                        blocks.length > 0 ? "cursor-pointer hover:bg-accent" : ""
+                      }`}
                     >
                       <div className="text-sm font-medium mb-1">
                         {format(day, "d")}
@@ -195,6 +200,17 @@ export default function LobbyPage({ params }: LobbyPageProps) {
           <LobbyInfo />
         </div>
       </div>
+
+      {/* Day Timeline Dialog */}
+      {selectedDay && lobby && (
+        <DayTimelineDialog
+          open={selectedDay !== null}
+          onOpenChange={(open) => !open && setSelectedDay(null)}
+          date={selectedDay}
+          blocks={getBlocksForDay(selectedDay)}
+          users={lobby.users}
+        />
+      )}
     </div>
   );
 }
