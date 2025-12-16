@@ -22,7 +22,7 @@ export default function LobbyPage({ params }: LobbyPageProps) {
   const mounted = useMounted();
   const { code } = use(params);
   const { lobby, currentUser, setUserForLobby, getUserForLobby } = useLobbyStore();
-  const { joinLobby, isLoading } = useLobby(code);
+  const { joinLobby, isLoading, sseStatus } = useLobby(code);
   const [currentMonth, setCurrentMonth] = useState<Date | null>(null);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
 
@@ -31,13 +31,16 @@ export default function LobbyPage({ params }: LobbyPageProps) {
     setCurrentMonth(new Date());
   }, []);
 
+  // Track if we've already joined to prevent re-joining on every render
+  const [hasJoined, setHasJoined] = useState(false);
+
   useEffect(() => {
     const doJoin = async () => {
-      if (currentUser) {
+      if (currentUser && !hasJoined) {
+        setHasJoined(true);
         const userCode = await joinLobby(currentUser.id, currentUser.name, currentUser.color);
         // Store userCode with user data
         if (userCode) {
-          const existingUser = getUserForLobby(code);
           setUserForLobby(code, {
             ...currentUser,
             userCode: userCode,
@@ -46,7 +49,8 @@ export default function LobbyPage({ params }: LobbyPageProps) {
       }
     };
     doJoin();
-  }, [currentUser, joinLobby, code, setUserForLobby, getUserForLobby]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id, code, hasJoined]);
 
   if (!mounted || !currentMonth) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
@@ -131,13 +135,21 @@ export default function LobbyPage({ params }: LobbyPageProps) {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-3xl font-bold tracking-tight">Time Sync</h1>
-            {!isLoading && lobby ? (
+            {sseStatus === "connected" ? (
               <Badge variant="outline" className="text-green-600 border-green-600">
-                Synced
+                Live
               </Badge>
-            ) : (
+            ) : sseStatus === "connecting" ? (
+              <Badge variant="outline" className="text-orange-600 border-orange-600">
+                Connecting...
+              </Badge>
+            ) : isLoading ? (
               <Badge variant="outline" className="text-orange-600 border-orange-600">
                 Loading...
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-red-600 border-red-600">
+                Reconnecting...
               </Badge>
             )}
           </div>

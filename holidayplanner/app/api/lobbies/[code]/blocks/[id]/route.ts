@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { sseManager } from "@/lib/sse/connection-manager";
 
 // Update a time block
 export async function PUT(
@@ -24,6 +25,12 @@ export async function PUT(
       WHERE id = ${id} AND lobby_code = ${code}
     `;
 
+    // Broadcast to all clients in this lobby
+    sseManager.broadcast(code, {
+      type: "block-updated",
+      data: { blockId: id },
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error updating time block:", error);
@@ -46,6 +53,12 @@ export async function DELETE(
       DELETE FROM time_blocks
       WHERE id = ${id} AND lobby_code = ${code}
     `;
+
+    // Broadcast to all clients in this lobby
+    sseManager.broadcast(code, {
+      type: "block-deleted",
+      data: { blockId: id },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

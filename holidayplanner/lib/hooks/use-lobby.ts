@@ -2,7 +2,8 @@
 
 import useSWR from "swr";
 import { useLobbyStore, useNotificationsStore } from "@/store";
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
+import { useSSE, type SSEStatus } from "./use-sse";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -10,16 +11,24 @@ export function useLobby(lobbyCode: string | null) {
   const { setLobby } = useLobbyStore();
   const { addNotification } = useNotificationsStore();
 
-  // Poll every 3 seconds
+  // Fetch lobby data (no polling - SSE handles updates)
   const { data, error, isLoading, mutate } = useSWR(
     lobbyCode ? `/api/lobbies/${lobbyCode}` : null,
     fetcher,
     {
-      refreshInterval: 3000,
       revalidateOnFocus: true,
       revalidateOnReconnect: true,
     }
   );
+
+  // SSE connection for real-time updates
+  const handleRefresh = useCallback(() => {
+    mutate();
+  }, [mutate]);
+
+  const { status: sseStatus } = useSSE(lobbyCode, {
+    onRefresh: handleRefresh,
+  });
 
   // Update store when data changes
   useEffect(() => {
@@ -253,6 +262,7 @@ export function useLobby(lobbyCode: string | null) {
     lobby: data,
     isLoading,
     error,
+    sseStatus,
     createLobby,
     joinLobby,
     linkDevice,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { generateUserCode } from "@/lib/utils";
+import { sseManager } from "@/lib/sse/connection-manager";
 
 // Join a lobby (add or update user)
 export async function POST(
@@ -52,6 +53,12 @@ export async function POST(
         is_active = TRUE,
         last_seen = CURRENT_TIMESTAMP
     `;
+
+    // Broadcast to all clients in this lobby
+    sseManager.broadcast(code, {
+      type: "user-joined",
+      data: { userId: id, userName: name },
+    });
 
     // Return the user code so it can be stored and displayed
     return NextResponse.json({ success: true, userCode });
