@@ -27,14 +27,15 @@ export async function POST(
       return NextResponse.json({ error: "Lobby not found" }, { status: 404 });
     }
 
-    // Upsert user
+    // Upsert user - reactivate if they're rejoining
     await sql`
-      INSERT INTO lobby_users (id, lobby_code, name, color, last_seen)
-      VALUES (${id}, ${code}, ${name}, ${color}, CURRENT_TIMESTAMP)
+      INSERT INTO lobby_users (id, lobby_code, name, color, is_active, last_seen)
+      VALUES (${id}, ${code}, ${name}, ${color}, TRUE, CURRENT_TIMESTAMP)
       ON CONFLICT (id)
       DO UPDATE SET
         name = ${name},
         color = ${color},
+        is_active = TRUE,
         last_seen = CURRENT_TIMESTAMP
     `;
 

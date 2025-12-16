@@ -9,9 +9,12 @@ import {
 } from "@/components/animate-ui/components/radix/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { findOverlappingSlots, formatTimeRange } from "@/lib/timeline-utils";
-import { Clock, Users } from "lucide-react";
+import { Clock, Users, Trash2 } from "lucide-react";
+import { useLobby } from "@/lib/hooks/use-lobby";
+import { useLobbyStore, useNotificationsStore } from "@/store";
 
 interface DayTimelineDialogProps {
   open: boolean;
@@ -19,6 +22,7 @@ interface DayTimelineDialogProps {
   date: Date;
   blocks: TimeBlock[];
   users: User[];
+  lobbyCode: string;
 }
 
 export function DayTimelineDialog({
@@ -27,13 +31,25 @@ export function DayTimelineDialog({
   date,
   blocks,
   users,
+  lobbyCode,
 }: DayTimelineDialogProps) {
+  const { currentUser } = useLobbyStore();
+  const { deleteBlock } = useLobby(lobbyCode);
+  const { addNotification } = useNotificationsStore();
+
   const getUserColor = (userId: string) => {
     return users.find((u) => u.id === userId)?.color || "#gray";
   };
 
   const getUserName = (userId: string) => {
     return users.find((u) => u.id === userId)?.name || "Unknown";
+  };
+
+  const handleDelete = async (blockId: string, title: string) => {
+    if (confirm(`Delete "${title}"?`)) {
+      await deleteBlock(blockId);
+      addNotification("success", "Availability deleted");
+    }
   };
 
   // Generate hour slots (6 AM to midnight)
@@ -140,7 +156,7 @@ export function DayTimelineDialog({
                           {hourBlocks.map((block) => (
                             <div
                               key={block.id}
-                              className="text-xs p-2 rounded flex items-center gap-2"
+                              className="text-xs p-2 rounded flex items-center gap-2 group"
                               style={{
                                 backgroundColor: getUserColor(block.userId) + "20",
                                 borderLeft: `3px solid ${getUserColor(block.userId)}`,
@@ -156,9 +172,19 @@ export function DayTimelineDialog({
                                 )}
                               </span>
                               {block.title && (
-                                <span className="ml-auto text-muted-foreground">
+                                <span className="text-muted-foreground">
                                   {block.title}
                                 </span>
+                              )}
+                              {currentUser?.id === block.userId && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="ml-auto h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() => handleDelete(block.id, block.title || "Availability")}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
                               )}
                             </div>
                           ))}

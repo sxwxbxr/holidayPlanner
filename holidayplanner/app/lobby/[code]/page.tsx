@@ -209,6 +209,7 @@ export default function LobbyPage({ params }: LobbyPageProps) {
           date={selectedDay}
           blocks={getBlocksForDay(selectedDay)}
           users={lobby.users}
+          lobbyCode={code}
         />
       )}
     </div>

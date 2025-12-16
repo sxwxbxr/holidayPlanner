@@ -129,6 +129,34 @@ DROP TABLE IF EXISTS lobbies CASCADE;
 
 Then run the initialization script again.
 
+## Migrations
+
+If you already have the database set up and need to add new features, run migrations:
+
+### Add is_active Column (for user session persistence)
+
+```bash
+# From the holidayplanner directory
+psql $DATABASE_URL -f lib/db/migrations/001_add_is_active.sql
+```
+
+Or in Neon SQL Editor:
+```sql
+-- Add is_active column for user session persistence
+ALTER TABLE lobby_users
+ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+
+-- Set all existing users to active
+UPDATE lobby_users
+SET is_active = TRUE
+WHERE is_active IS NULL;
+```
+
+This enables:
+- Users rejoining lobbies without creating duplicates
+- Inactive status instead of deletion when leaving
+- Explicit "Leave Lobby" button to mark users as inactive
+
 ## Next Steps
 
 After database setup:

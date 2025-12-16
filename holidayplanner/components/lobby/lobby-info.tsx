@@ -2,22 +2,41 @@
 
 import { useLobbyStore } from "@/store";
 import { useMounted } from "@/lib/hooks/use-mounted";
+import { useLobby } from "@/lib/hooks/use-lobby";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Copy, Users as UsersIcon } from "lucide-react";
+import { Copy, Users as UsersIcon, LogOut } from "lucide-react";
 import { useNotificationsStore } from "@/store";
+import { useRouter } from "next/navigation";
 
 export function LobbyInfo() {
   const mounted = useMounted();
-  const { lobby, currentUser } = useLobbyStore();
+  const { lobby, currentUser, setLobby, setCurrentUser } = useLobbyStore();
   const { addNotification } = useNotificationsStore();
+  const { leaveLobby } = useLobby(lobby?.code || null);
+  const router = useRouter();
 
   if (!mounted || !lobby) return null;
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(lobby.code);
     addNotification("success", "Lobby code copied!");
+  };
+
+  const handleLeaveLobby = async () => {
+    if (!currentUser) return;
+
+    if (confirm("Are you sure you want to leave this lobby?")) {
+      const success = await leaveLobby(currentUser.id);
+      if (success) {
+        // Clear local state
+        setLobby(null);
+        setCurrentUser(null);
+        addNotification("success", "Left lobby");
+        router.push("/");
+      }
+    }
   };
 
   return (
@@ -66,6 +85,15 @@ export function LobbyInfo() {
             ))}
           </div>
         </div>
+
+        <Button
+          variant="destructive"
+          className="w-full"
+          onClick={handleLeaveLobby}
+        >
+          <LogOut className="h-4 w-4 mr-2" />
+          Leave Lobby
+        </Button>
       </CardContent>
     </Card>
   );

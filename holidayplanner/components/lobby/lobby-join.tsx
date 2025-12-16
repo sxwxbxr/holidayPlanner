@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLobbyStore } from "@/store";
-import { getRandomColor } from "@/lib/utils";
+import { getRandomColor, generateUUID } from "@/lib/utils";
 import { useLobby } from "@/lib/hooks/use-lobby";
 import { useMounted } from "@/lib/hooks/use-mounted";
 import { User } from "@/types";
@@ -31,7 +31,7 @@ export function LobbyJoin() {
     if (!name.trim()) return;
 
     const user: User = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       name: name.trim(),
       color: getRandomColor(),
     };

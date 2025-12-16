@@ -116,12 +116,30 @@ export function useLobby(lobbyCode: string | null) {
     }
   };
 
+  const leaveLobby = async (userId: string) => {
+    if (!lobbyCode) return;
+
+    try {
+      await fetch(`/api/lobbies/${lobbyCode}/leave`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+      mutate(); // Refresh data
+      return true;
+    } catch (error) {
+      addNotification("error", "Failed to leave lobby");
+      return false;
+    }
+  };
+
   return {
     lobby: data,
     isLoading,
     error,
     createLobby,
     joinLobby,
+    leaveLobby,
     addBlock,
     updateBlock,
     deleteBlock,

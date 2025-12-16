@@ -6,6 +6,7 @@ export interface User {
   id: UUID;
   name: string;
   color: string;
+  isActive?: boolean; // Whether user is currently active in the lobby
 }
 
 // Time block representing availability

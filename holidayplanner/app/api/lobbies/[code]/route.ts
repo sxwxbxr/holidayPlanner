@@ -18,11 +18,11 @@ export async function GET(
       return NextResponse.json({ error: "Lobby not found" }, { status: 404 });
     }
 
-    // Get users
+    // Get active users only
     const users = await sql`
-      SELECT id, name, color, joined_at
+      SELECT id, name, color, is_active, joined_at
       FROM lobby_users
-      WHERE lobby_code = ${code}
+      WHERE lobby_code = ${code} AND is_active = TRUE
       ORDER BY joined_at ASC
     `;
 
@@ -42,6 +42,7 @@ export async function GET(
         id: u.id,
         name: u.name,
         color: u.color,
+        isActive: u.is_active,
       })),
       timeBlocks: timeBlocks.map((tb) => ({
         id: tb.id,

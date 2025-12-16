@@ -129,6 +129,7 @@ Example: `npx shadcn@latest add "https://animate-ui.com/r/components-radix-dialo
 
 3. **Time Block Management**:
    - Add/edit/delete availability blocks
+   - Delete blocks from day timeline view (only own blocks)
    - Time range selection (start/end times)
    - Optional titles and descriptions
    - Auto-sync every 3 seconds
@@ -138,22 +139,41 @@ Example: `npx shadcn@latest add "https://animate-ui.com/r/components-radix-dialo
    - Monthly calendar with time blocks
    - Color-coded by user
    - Overlap detection (highlighted when multiple users are free)
+   - Clickable days open detailed timeline dialog
+   - Day timeline shows hour-by-hour availability
+   - Overlapping time periods highlighted in timeline
    - Responsive grid layout
    - Navigate months
 
-5. **UI/UX**:
+5. **User Session Management**:
+   - Persistent user sessions (rejoining doesn't create duplicates)
+   - Users marked as inactive when leaving (not deleted)
+   - Explicit "Leave Lobby" button
+   - Automatic reactivation when rejoining
+   - User history preserved in database
+
+6. **UI/UX**:
    - Clean landing page with create/join options
    - Loading/synced status indicators
    - Theme switching (light/dark/system)
    - Animate UI for smooth transitions
    - Toast notifications
+   - Mobile browser compatibility with UUID fallback
 
 **Data Models:**
 ```typescript
 // Lobby: code, name, users[], timeBlocks[]
-// User: id, name, color
+// User: id, name, color, isActive
 // TimeBlock: id, userId, startTime, endTime, title, description
 ```
+
+**Recent Updates:**
+- ✅ Day timeline dialog with overlapping time detection
+- ✅ Delete availability blocks from timeline (only own blocks)
+- ✅ User session persistence (no duplicate users on rejoin)
+- ✅ Inactive user status instead of deletion
+- ✅ Leave Lobby button
+- ✅ Mobile browser UUID generation fallback
 
 ### Next Steps (Optional Enhancements):
 - Week view for detailed time blocks
@@ -170,10 +190,14 @@ DATABASE_URL=postgresql://user:password@ep-xxx.neon.tech/neondb?sslmode=require
 
 ### Database Schema:
 - **lobbies**: code (PK), name, created_at
-- **lobby_users**: id (PK), lobby_code (FK), name, color, joined_at, last_seen
+- **lobby_users**: id (PK), lobby_code (FK), name, color, is_active, joined_at, last_seen
 - **time_blocks**: id (PK), lobby_code (FK), user_id (FK), start_time, end_time, title, description, created_at, updated_at
+
+**Note**: If you have an existing database, run the migration in `lib/db/migrations/001_add_is_active.sql` to add the `is_active` column.
 
 ### Component Usage:
 - **Dialog**: Time block forms (use `from="bottom"`)
-- **useLobby hook**: SWR-based data fetching with auto-polling
+- **DayTimelineDialog**: Shows daily timeline with overlaps and delete functionality
+- **useLobby hook**: SWR-based data fetching with auto-polling, includes leaveLobby function
 - **LobbyStore**: Local state management with Zustand
+- **generateUUID()**: Cross-browser UUID generation with fallback for mobile

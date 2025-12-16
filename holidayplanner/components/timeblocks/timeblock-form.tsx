@@ -8,6 +8,7 @@ import { useNotificationsStore, useLobbyStore } from "@/store";
 import { useLobby } from "@/lib/hooks/use-lobby";
 import { TimeBlock } from "@/types";
 import { format } from "date-fns";
+import { generateUUID } from "@/lib/utils";
 
 interface TimeBlockFormProps {
   lobbyCode: string;
@@ -80,7 +81,7 @@ export function TimeBlockForm({
       addNotification("success", "Availability updated");
     } else {
       await addBlock({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         userId: currentUser.id,
         startTime,
         endTime,
