@@ -44,17 +44,44 @@ export function useLobby(lobbyCode: string | null) {
   };
 
   const joinLobby = async (userId: string, name: string, color: string) => {
-    if (!lobbyCode) return;
+    if (!lobbyCode) return null;
 
     try {
-      await fetch(`/api/lobbies/${lobbyCode}/join`, {
+      const res = await fetch(`/api/lobbies/${lobbyCode}/join`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: userId, name, color }),
       });
+      const result = await res.json();
       mutate(); // Refresh data
+      return result.userCode || null;
     } catch (error) {
       addNotification("error", "Failed to join lobby");
+      return null;
+    }
+  };
+
+  const linkDevice = async (userCode: string) => {
+    if (!lobbyCode) return null;
+
+    try {
+      const res = await fetch(`/api/lobbies/${lobbyCode}/link`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userCode }),
+      });
+      const result = await res.json();
+
+      if (result.error) {
+        addNotification("error", result.error);
+        return null;
+      }
+
+      mutate(); // Refresh data
+      return result.user;
+    } catch (error) {
+      addNotification("error", "Failed to link device");
+      return null;
     }
   };
 
@@ -63,6 +90,7 @@ export function useLobby(lobbyCode: string | null) {
     userId: string;
     startTime: Date;
     endTime: Date;
+    blockType?: string;
     title?: string;
     description?: string;
   }) => {
@@ -76,7 +104,7 @@ export function useLobby(lobbyCode: string | null) {
       });
       mutate(); // Refresh data immediately
     } catch (error) {
-      addNotification("error", "Failed to add availability");
+      addNotification("error", "Failed to add time block");
     }
   };
 
@@ -85,6 +113,7 @@ export function useLobby(lobbyCode: string | null) {
     updates: {
       startTime: Date;
       endTime: Date;
+      blockType?: string;
       title?: string;
       description?: string;
     }
@@ -139,6 +168,7 @@ export function useLobby(lobbyCode: string | null) {
     error,
     createLobby,
     joinLobby,
+    linkDevice,
     leaveLobby,
     addBlock,
     updateBlock,

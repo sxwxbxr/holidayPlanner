@@ -7,15 +7,20 @@ export interface User {
   name: string;
   color: string;
   isActive?: boolean; // Whether user is currently active in the lobby
+  userCode?: string; // Code for cross-device authentication
 }
 
-// Time block representing availability
+// Block type - whether user is available or busy
+export type BlockType = "available" | "busy";
+
+// Time block representing availability or unavailability
 export interface TimeBlock {
   id: UUID;
   userId: UUID;
   startTime: Date;
   endTime: Date;
-  title?: string; // e.g., "Available to game", "Free to hang"
+  blockType: BlockType; // Whether user is available or busy during this time
+  title?: string; // e.g., "Available to game", "Work meeting"
   description?: string;
   createdAt: Date;
   updatedAt: Date;

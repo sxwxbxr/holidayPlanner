@@ -9,7 +9,7 @@ import { TimeBlockDialog } from "@/components/timeblocks/timeblock-dialog";
 import { DayTimelineDialog } from "@/components/timeline/day-timeline-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -20,7 +20,7 @@ interface LobbyPageProps {
 export default function LobbyPage({ params }: LobbyPageProps) {
   const mounted = useMounted();
   const { code } = use(params);
-  const { lobby, currentUser } = useLobbyStore();
+  const { lobby, currentUser, setUserForLobby, getUserForLobby } = useLobbyStore();
   const { joinLobby, isLoading } = useLobby(code);
   const [currentMonth, setCurrentMonth] = useState<Date | null>(null);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
@@ -31,10 +31,21 @@ export default function LobbyPage({ params }: LobbyPageProps) {
   }, []);
 
   useEffect(() => {
-    if (currentUser) {
-      joinLobby(currentUser.id, currentUser.name, currentUser.color);
-    }
-  }, [currentUser, joinLobby]);
+    const doJoin = async () => {
+      if (currentUser) {
+        const userCode = await joinLobby(currentUser.id, currentUser.name, currentUser.color);
+        // Store userCode with user data
+        if (userCode) {
+          const existingUser = getUserForLobby(code);
+          setUserForLobby(code, {
+            ...currentUser,
+            userCode: userCode,
+          });
+        }
+      }
+    };
+    doJoin();
+  }, [currentUser, joinLobby, code, setUserForLobby, getUserForLobby]);
 
   if (!mounted || !currentMonth) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
@@ -77,7 +88,7 @@ export default function LobbyPage({ params }: LobbyPageProps) {
             )}
           </div>
           <p className="text-muted-foreground">
-            Mark your availability and find overlapping free time
+            Mark when you&apos;re available or busy, and find overlapping free time
           </p>
         </div>
         <TimeBlockDialog lobbyCode={code} />
@@ -122,7 +133,7 @@ export default function LobbyPage({ params }: LobbyPageProps) {
               </div>
 
               <div className="grid grid-cols-7 gap-2">
-                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
                   <div
                     key={day}
                     className="text-center text-sm font-medium text-muted-foreground p-2"
@@ -130,6 +141,18 @@ export default function LobbyPage({ params }: LobbyPageProps) {
                     {day}
                   </div>
                 ))}
+
+                {/* Add empty cells for days before the first of the month */}
+                {(() => {
+                  // getDay returns 0 for Sunday, 1 for Monday, etc.
+                  // For Monday-first layout, we need to adjust: Mon=0, Tue=1, ..., Sun=6
+                  const firstDayOfWeek = getDay(monthStart);
+                  // Convert Sunday-first (0=Sun) to Monday-first (0=Mon)
+                  const paddingDays = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+                  return Array.from({ length: paddingDays }).map((_, i) => (
+                    <div key={`empty-${i}`} className="min-h-24 p-2" />
+                  ));
+                })()}
 
                 {days.map((day, index) => {
                   const blocks = getBlocksForDay(day);
@@ -155,15 +178,17 @@ export default function LobbyPage({ params }: LobbyPageProps) {
                             key={block.id}
                             className="text-xs p-1 rounded truncate"
                             style={{
-                              backgroundColor: getUserColor(block.userId) + "20",
-                              borderLeft: `2px solid ${getUserColor(block.userId)}`,
+                              backgroundColor: block.blockType === "busy"
+                                ? "#ef444420"
+                                : getUserColor(block.userId) + "20",
+                              borderLeft: `2px solid ${block.blockType === "busy" ? "#ef4444" : getUserColor(block.userId)}`,
                             }}
-                            title={`${getUserName(block.userId)}: ${format(
+                            title={`${getUserName(block.userId)} (${block.blockType === "busy" ? "Busy" : "Available"}): ${format(
                               new Date(block.startTime),
                               "HH:mm"
                             )} - ${format(new Date(block.endTime), "HH:mm")}`}
                           >
-                            {getUserName(block.userId)}
+                            {block.blockType === "busy" ? "❌ " : ""}{getUserName(block.userId)}
                           </div>
                         ))}
                         {blocks.length > 3 && (
@@ -182,7 +207,7 @@ export default function LobbyPage({ params }: LobbyPageProps) {
           <Card>
             <CardContent className="p-4">
               <h3 className="font-semibold mb-3">Legend</h3>
-              <div className="flex items-center gap-4 text-sm">
+              <div className="flex flex-wrap items-center gap-4 text-sm">
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 rounded border-2 border-green-500" />
                   <span>Overlapping availability</span>
@@ -190,6 +215,10 @@ export default function LobbyPage({ params }: LobbyPageProps) {
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 rounded border-2 border-primary" />
                   <span>Today</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded border-l-2 border-red-500 bg-red-500/20" />
+                  <span>Busy/Unavailable</span>
                 </div>
               </div>
             </CardContent>

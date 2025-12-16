@@ -9,13 +9,14 @@ export async function PUT(
   try {
     const { code, id } = await params;
     const body = await request.json();
-    const { startTime, endTime, title, description } = body;
+    const { startTime, endTime, blockType, title, description } = body;
 
     await sql`
       UPDATE time_blocks
       SET
         start_time = ${startTime},
         end_time = ${endTime},
+        block_type = ${blockType || 'available'},
         title = ${title || null},
         description = ${description || null},
         updated_at = CURRENT_TIMESTAMP

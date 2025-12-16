@@ -39,3 +39,16 @@ export function generateUUID(): string {
     return v.toString(16);
   });
 }
+
+/**
+ * Generate a short user code for cross-device authentication.
+ * Format: 8 alphanumeric characters (uppercase) for easy entry
+ */
+export function generateUserCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Removed confusing chars: I, O, 0, 1
+  let code = "";
+  for (let i = 0; i < 8; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}

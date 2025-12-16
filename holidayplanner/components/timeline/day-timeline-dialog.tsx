@@ -46,17 +46,20 @@ export function DayTimelineDialog({
   };
 
   const handleDelete = async (blockId: string, title: string) => {
-    if (confirm(`Delete "${title}"?`)) {
+    if (confirm(`Delete "${title || 'this time block'}"?`)) {
       await deleteBlock(blockId);
-      addNotification("success", "Availability deleted");
+      addNotification("success", "Time block deleted");
     }
   };
+
+  // Filter only available blocks for overlap detection
+  const availableBlocks = blocks.filter(b => b.blockType !== "busy");
 
   // Generate hour slots (6 AM to midnight)
   const hours = Array.from({ length: 19 }, (_, i) => i + 6); // 6 to 24
 
-  // Find overlapping periods
-  const overlaps = findOverlappingSlots(blocks).filter((slot) => slot.isOverlap);
+  // Find overlapping periods (only consider available blocks)
+  const overlaps = findOverlappingSlots(availableBlocks).filter((slot) => slot.isOverlap);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -153,41 +156,51 @@ export function DayTimelineDialog({
                     <div className="flex-1 p-2 relative">
                       {hourBlocks.length > 0 ? (
                         <div className="space-y-1">
-                          {hourBlocks.map((block) => (
-                            <div
-                              key={block.id}
-                              className="text-xs p-2 rounded flex items-center gap-2 group"
-                              style={{
-                                backgroundColor: getUserColor(block.userId) + "20",
-                                borderLeft: `3px solid ${getUserColor(block.userId)}`,
-                              }}
-                            >
-                              <span className="font-medium">
-                                {getUserName(block.userId)}
-                              </span>
-                              <span className="text-muted-foreground">
-                                {formatTimeRange(
-                                  new Date(block.startTime),
-                                  new Date(block.endTime)
-                                )}
-                              </span>
-                              {block.title && (
-                                <span className="text-muted-foreground">
-                                  {block.title}
+                          {hourBlocks.map((block) => {
+                            const isBusy = block.blockType === "busy";
+                            return (
+                              <div
+                                key={block.id}
+                                className="text-xs p-2 rounded flex items-center gap-2 group"
+                                style={{
+                                  backgroundColor: isBusy
+                                    ? "#ef444420"
+                                    : getUserColor(block.userId) + "20",
+                                  borderLeft: `3px solid ${isBusy ? "#ef4444" : getUserColor(block.userId)}`,
+                                }}
+                              >
+                                <span className="font-medium">
+                                  {isBusy && "❌ "}{getUserName(block.userId)}
                                 </span>
-                              )}
-                              {currentUser?.id === block.userId && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="ml-auto h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={() => handleDelete(block.id, block.title || "Availability")}
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              )}
-                            </div>
-                          ))}
+                                <span className="text-muted-foreground">
+                                  {formatTimeRange(
+                                    new Date(block.startTime),
+                                    new Date(block.endTime)
+                                  )}
+                                </span>
+                                {block.title && (
+                                  <span className="text-muted-foreground">
+                                    {block.title}
+                                  </span>
+                                )}
+                                {!block.title && (
+                                  <span className="text-muted-foreground italic">
+                                    {isBusy ? "Busy" : "Available"}
+                                  </span>
+                                )}
+                                {currentUser?.id === block.userId && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="ml-auto h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={() => handleDelete(block.id, block.title || (isBusy ? "Busy" : "Available"))}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       ) : (
                         <div className="text-xs text-muted-foreground italic">

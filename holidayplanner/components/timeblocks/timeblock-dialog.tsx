@@ -33,14 +33,14 @@ export function TimeBlockDialog({
         {trigger || (
           <Button>
             <Plus className="size-4 mr-2" />
-            Add Availability
+            Add Time Block
           </Button>
         )}
       </DialogTrigger>
       <DialogContent from="bottom">
         <DialogHeader>
           <DialogTitle>
-            {blockId ? "Edit" : "Add"} Availability
+            {blockId ? "Edit" : "Add"} Time Block
           </DialogTitle>
         </DialogHeader>
         <TimeBlockForm

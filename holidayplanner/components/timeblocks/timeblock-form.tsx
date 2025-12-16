@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useNotificationsStore, useLobbyStore } from "@/store";
 import { useLobby } from "@/lib/hooks/use-lobby";
-import { TimeBlock } from "@/types";
+import { TimeBlock, BlockType } from "@/types";
 import { format } from "date-fns";
 import { generateUUID } from "@/lib/utils";
+import { Check, X } from "lucide-react";
 
 interface TimeBlockFormProps {
   lobbyCode: string;
@@ -39,7 +40,8 @@ export function TimeBlockForm({
       : format(new Date(), "yyyy-MM-dd"),
     startTime: "18:00",
     endTime: "22:00",
-    title: "Available",
+    blockType: "available" as BlockType,
+    title: "",
     description: "",
   });
 
@@ -49,7 +51,8 @@ export function TimeBlockForm({
         date: format(new Date(existingBlock.startTime), "yyyy-MM-dd"),
         startTime: format(new Date(existingBlock.startTime), "HH:mm"),
         endTime: format(new Date(existingBlock.endTime), "HH:mm"),
-        title: existingBlock.title || "Available",
+        blockType: existingBlock.blockType || "available",
+        title: existingBlock.title || "",
         description: existingBlock.description || "",
       });
     }
@@ -75,20 +78,22 @@ export function TimeBlockForm({
       await updateBlock(blockId, {
         startTime,
         endTime,
-        title: formData.title.trim() || "Available",
+        blockType: formData.blockType,
+        title: formData.title.trim() || undefined,
         description: formData.description.trim() || undefined,
       });
-      addNotification("success", "Availability updated");
+      addNotification("success", "Time block updated");
     } else {
       await addBlock({
         id: generateUUID(),
         userId: currentUser.id,
         startTime,
         endTime,
-        title: formData.title.trim() || "Available",
+        blockType: formData.blockType,
+        title: formData.title.trim() || undefined,
         description: formData.description.trim() || undefined,
       });
-      addNotification("success", "Availability added");
+      addNotification("success", "Time block added");
     }
 
     onSuccess?.();
@@ -96,11 +101,48 @@ export function TimeBlockForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Block Type Toggle */}
       <div className="space-y-2">
-        <Label htmlFor="title">Title</Label>
+        <Label>Type</Label>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            type="button"
+            variant={formData.blockType === "available" ? "default" : "outline"}
+            className={formData.blockType === "available"
+              ? "bg-green-600 hover:bg-green-700"
+              : ""
+            }
+            onClick={() => setFormData({ ...formData, blockType: "available" })}
+          >
+            <Check className="size-4 mr-2" />
+            Available
+          </Button>
+          <Button
+            type="button"
+            variant={formData.blockType === "busy" ? "default" : "outline"}
+            className={formData.blockType === "busy"
+              ? "bg-red-600 hover:bg-red-700"
+              : ""
+            }
+            onClick={() => setFormData({ ...formData, blockType: "busy" })}
+          >
+            <X className="size-4 mr-2" />
+            Busy
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {formData.blockType === "available"
+            ? "Mark when you're free to meet up"
+            : "Mark when you can't meet up"
+          }
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="title">Title (Optional)</Label>
         <Input
           id="title"
-          placeholder="Available to game, Free to hang, etc."
+          placeholder={formData.blockType === "available" ? "Free to hang, Available to game..." : "Work, Appointment, School..."}
           value={formData.title}
           onChange={(e) => setFormData({ ...formData, title: e.target.value })}
         />
@@ -163,7 +205,7 @@ export function TimeBlockForm({
           </Button>
         )}
         <Button type="submit">
-          {blockId ? "Update" : "Add"} Availability
+          {blockId ? "Update" : "Add"} Time Block
         </Button>
       </div>
     </form>

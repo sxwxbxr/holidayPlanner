@@ -57,6 +57,14 @@ ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
 ALTER TABLE lobby_users
 ADD COLUMN IF NOT EXISTS last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
+-- Migration 003: Add block_type column to time_blocks (available or busy)
+ALTER TABLE time_blocks
+ADD COLUMN IF NOT EXISTS block_type VARCHAR(20) DEFAULT 'available';
+
+-- Migration 004: Add user_code column to lobby_users for cross-device auth
+ALTER TABLE lobby_users
+ADD COLUMN IF NOT EXISTS user_code VARCHAR(8);
+
 -- ============================================================================
 -- DATA FIXES - Ensure existing data has proper defaults
 -- ============================================================================
@@ -67,12 +75,16 @@ UPDATE lobby_users SET is_active = TRUE WHERE is_active IS NULL;
 -- Set last_seen = joined_at for any NULL values
 UPDATE lobby_users SET last_seen = joined_at WHERE last_seen IS NULL;
 
+-- Set block_type = 'available' for any NULL values (from before migration)
+UPDATE time_blocks SET block_type = 'available' WHERE block_type IS NULL;
+
 -- ============================================================================
 -- INDEXES
 -- ============================================================================
 
 CREATE INDEX IF NOT EXISTS idx_lobby_users_lobby ON lobby_users(lobby_code);
 CREATE INDEX IF NOT EXISTS idx_lobby_users_active ON lobby_users(lobby_code, is_active);
+CREATE INDEX IF NOT EXISTS idx_lobby_users_code ON lobby_users(lobby_code, user_code);
 CREATE INDEX IF NOT EXISTS idx_time_blocks_lobby ON time_blocks(lobby_code);
 CREATE INDEX IF NOT EXISTS idx_time_blocks_user ON time_blocks(user_id);
 CREATE INDEX IF NOT EXISTS idx_time_blocks_time ON time_blocks(start_time, end_time);
@@ -84,4 +96,8 @@ CREATE INDEX IF NOT EXISTS idx_time_blocks_time ON time_blocks(start_time, end_t
 -- Insert current schema version (upsert pattern)
 INSERT INTO schema_version (version, description)
 VALUES (2, 'Add is_active and last_seen columns to lobby_users')
+ON CONFLICT (version) DO NOTHING;
+
+INSERT INTO schema_version (version, description)
+VALUES (3, 'Add block_type to time_blocks and user_code to lobby_users')
 ON CONFLICT (version) DO NOTHING;

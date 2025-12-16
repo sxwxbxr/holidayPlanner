@@ -73,6 +73,8 @@ npm run dev
     - `route.ts` - Create lobby
     - `[code]/route.ts` - Get lobby state
     - `[code]/join/route.ts` - Join lobby
+    - `[code]/link/route.ts` - Link device using user code
+    - `[code]/leave/route.ts` - Leave lobby
     - `[code]/blocks/route.ts` - Add time block
     - `[code]/blocks/[id]/route.ts` - Update/delete block
 - `holidayplanner/components/` - React components
@@ -130,12 +132,14 @@ Example: `npx shadcn@latest add "https://animate-ui.com/r/components-radix-dialo
    - Lobby info with all users
 
 3. **Time Block Management**:
-   - Add/edit/delete availability blocks
+   - Add/edit/delete time blocks
+   - **Block types**: "Available" (when you're free) or "Busy" (when you can't meet)
    - Delete blocks from day timeline view (only own blocks)
    - Time range selection (start/end times)
    - Optional titles and descriptions
    - Auto-sync every 3 seconds
    - Immediate refresh after mutations
+   - Busy blocks shown in red with different styling
 
 4. **Calendar View**:
    - Monthly calendar with time blocks
@@ -153,6 +157,8 @@ Example: `npx shadcn@latest add "https://animate-ui.com/r/components-radix-dialo
    - Explicit "Leave Lobby" button
    - Automatic reactivation when rejoining
    - User history preserved in database
+   - **Cross-device authentication**: Each user gets a unique 8-character device code
+   - "Link Device" feature to sync as the same user on multiple devices (phone, PC, etc.)
 
 6. **UI/UX**:
    - Clean landing page with create/join options
@@ -165,11 +171,17 @@ Example: `npx shadcn@latest add "https://animate-ui.com/r/components-radix-dialo
 **Data Models:**
 ```typescript
 // Lobby: code, name, users[], timeBlocks[]
-// User: id, name, color, isActive
-// TimeBlock: id, userId, startTime, endTime, title, description
+// User: id, name, color, isActive, userCode
+// TimeBlock: id, userId, startTime, endTime, blockType, title, description
+// BlockType: "available" | "busy"
 ```
 
 **Recent Updates:**
+- ✅ **Block types**: Time blocks can now be "Available" or "Busy"
+- ✅ **Cross-device authentication**: Link your phone and PC as the same user
+- ✅ Device code shown in Lobby Info section
+- ✅ "Link Device" option on home page
+- ✅ Calendar uses Monday-first week layout
 - ✅ Day timeline dialog with overlapping time detection
 - ✅ Delete availability blocks from timeline (only own blocks)
 - ✅ User session persistence (no duplicate users on rejoin)
@@ -193,8 +205,8 @@ DATABASE_URL=postgresql://user:password@ep-xxx.neon.tech/neondb?sslmode=require
 ### Database Schema:
 - **schema_version**: version (PK), applied_at, description - tracks schema version
 - **lobbies**: code (PK), name, created_at
-- **lobby_users**: id (PK), lobby_code (FK), name, color, is_active, joined_at, last_seen
-- **time_blocks**: id (PK), lobby_code (FK), user_id (FK), start_time, end_time, title, description, created_at, updated_at
+- **lobby_users**: id (PK), lobby_code (FK), name, color, is_active, user_code, joined_at, last_seen
+- **time_blocks**: id (PK), lobby_code (FK), user_id (FK), start_time, end_time, block_type, title, description, created_at, updated_at
 
 **Note**: The schema script (`lib/db/schema.sql`) is idempotent and can be run on any database state. It handles fresh installs and upgrades automatically.
 

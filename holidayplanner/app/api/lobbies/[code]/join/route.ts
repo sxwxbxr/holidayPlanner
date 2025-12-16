@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { generateUserCode } from "@/lib/utils";
 
 // Join a lobby (add or update user)
 export async function POST(
@@ -27,19 +28,33 @@ export async function POST(
       return NextResponse.json({ error: "Lobby not found" }, { status: 404 });
     }
 
+    // Check if user already exists (to preserve their user_code)
+    const existingUsers = await sql`
+      SELECT user_code FROM lobby_users WHERE id = ${id}
+    `;
+
+    let userCode = existingUsers.length > 0 ? existingUsers[0].user_code : null;
+
+    // Generate a new user code if this is a new user or they don't have one
+    if (!userCode) {
+      userCode = generateUserCode();
+    }
+
     // Upsert user - reactivate if they're rejoining
     await sql`
-      INSERT INTO lobby_users (id, lobby_code, name, color, is_active, last_seen)
-      VALUES (${id}, ${code}, ${name}, ${color}, TRUE, CURRENT_TIMESTAMP)
+      INSERT INTO lobby_users (id, lobby_code, name, color, user_code, is_active, last_seen)
+      VALUES (${id}, ${code}, ${name}, ${color}, ${userCode}, TRUE, CURRENT_TIMESTAMP)
       ON CONFLICT (id)
       DO UPDATE SET
         name = ${name},
         color = ${color},
+        user_code = COALESCE(lobby_users.user_code, ${userCode}),
         is_active = TRUE,
         last_seen = CURRENT_TIMESTAMP
     `;
 
-    return NextResponse.json({ success: true });
+    // Return the user code so it can be stored and displayed
+    return NextResponse.json({ success: true, userCode });
   } catch (error) {
     console.error("Error joining lobby:", error);
     return NextResponse.json(

@@ -28,7 +28,7 @@ export async function GET(
 
     // Get time blocks
     const timeBlocks = await sql`
-      SELECT id, user_id, start_time, end_time, title, description, created_at, updated_at
+      SELECT id, user_id, start_time, end_time, block_type, title, description, created_at, updated_at
       FROM time_blocks
       WHERE lobby_code = ${code}
       ORDER BY start_time ASC
@@ -49,6 +49,7 @@ export async function GET(
         userId: tb.user_id,
         startTime: tb.start_time,
         endTime: tb.end_time,
+        blockType: tb.block_type || "available",
         title: tb.title,
         description: tb.description,
         createdAt: tb.created_at,
