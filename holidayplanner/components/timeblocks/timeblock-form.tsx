@@ -105,35 +105,40 @@ export function TimeBlockForm({
 
     let success = false;
 
-    if (blockId && existingBlock) {
-      success = await updateBlock(blockId, {
-        startTime,
-        endTime,
-        isAllDay: formData.isAllDay,
-        blockType: formData.blockType,
-        title: formData.title.trim() || undefined,
-        description: formData.description.trim() || undefined,
-      });
-      if (success) {
-        addNotification("success", "Time block updated");
+    try {
+      if (blockId && existingBlock) {
+        success = await updateBlock(blockId, {
+          startTime,
+          endTime,
+          isAllDay: formData.isAllDay,
+          blockType: formData.blockType,
+          title: formData.title.trim() || undefined,
+          description: formData.description.trim() || undefined,
+        });
+        if (success) {
+          addNotification("success", "Time block updated");
+        }
+      } else {
+        success = await addBlock({
+          id: generateUUID(),
+          userId: currentUser.id,
+          startTime,
+          endTime,
+          isAllDay: formData.isAllDay,
+          blockType: formData.blockType,
+          title: formData.title.trim() || undefined,
+          description: formData.description.trim() || undefined,
+        });
+        if (success) {
+          addNotification("success", "Time block added");
+        }
       }
-    } else {
-      success = await addBlock({
-        id: generateUUID(),
-        userId: currentUser.id,
-        startTime,
-        endTime,
-        isAllDay: formData.isAllDay,
-        blockType: formData.blockType,
-        title: formData.title.trim() || undefined,
-        description: formData.description.trim() || undefined,
-      });
-      if (success) {
-        addNotification("success", "Time block added");
-      }
+    } catch (error) {
+      console.error("Error submitting time block:", error);
+      addNotification("error", "Failed to save time block");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsSubmitting(false);
 
     if (success) {
       onSuccess?.();

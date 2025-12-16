@@ -47,8 +47,10 @@ export function DayTimelineDialog({
 
   const handleDelete = async (blockId: string, title: string) => {
     if (confirm(`Delete "${title || 'this time block'}"?`)) {
-      await deleteBlock(blockId);
-      addNotification("success", "Time block deleted");
+      const success = await deleteBlock(blockId);
+      if (success) {
+        addNotification("success", "Time block deleted");
+      }
     }
   };
 

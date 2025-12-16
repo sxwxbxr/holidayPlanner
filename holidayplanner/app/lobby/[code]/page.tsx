@@ -9,7 +9,8 @@ import { TimeBlockDialog } from "@/components/timeblocks/timeblock-dialog";
 import { DayTimelineDialog } from "@/components/timeline/day-timeline-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay, startOfDay, endOfDay, isWithinInterval } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay, startOfDay, endOfDay, isWithinInterval, max, min } from "date-fns";
+import { TimeBlock } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -73,8 +74,9 @@ export default function LobbyPage({ params }: LobbyPageProps) {
           );
         }
 
-        // For regular blocks: check if the block's start day matches
-        return isSameDay(blockStart, day);
+        // For regular blocks (including overnight): check if the block overlaps with this day
+        // A block overlaps with a day if it starts before the day ends AND ends after the day starts
+        return blockStart < dayEnd && blockEnd > dayStart;
       }) || []
     );
   };
@@ -85,6 +87,42 @@ export default function LobbyPage({ params }: LobbyPageProps) {
 
   const getUserName = (userId: string) => {
     return lobby?.users.find((u) => u.id === userId)?.name || "Unknown";
+  };
+
+  // Check if there are overlapping "available" blocks from different users
+  const hasOverlappingAvailability = (blocks: TimeBlock[]) => {
+    // Filter only available blocks (not busy)
+    const availableBlocks = blocks.filter(b => b.blockType !== "busy");
+
+    // Need at least 2 available blocks from different users
+    if (availableBlocks.length < 2) return false;
+
+    // Get unique users with available blocks
+    const usersWithAvailability = new Set(availableBlocks.map(b => b.userId));
+    if (usersWithAvailability.size < 2) return false;
+
+    // Check for actual time overlap between blocks from different users
+    for (let i = 0; i < availableBlocks.length; i++) {
+      for (let j = i + 1; j < availableBlocks.length; j++) {
+        const block1 = availableBlocks[i];
+        const block2 = availableBlocks[j];
+
+        // Only check blocks from different users
+        if (block1.userId === block2.userId) continue;
+
+        const start1 = new Date(block1.startTime);
+        const end1 = new Date(block1.endTime);
+        const start2 = new Date(block2.startTime);
+        const end2 = new Date(block2.endTime);
+
+        // Check if time ranges overlap
+        if (start1 < end2 && start2 < end1) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   };
 
   return (
@@ -172,7 +210,7 @@ export default function LobbyPage({ params }: LobbyPageProps) {
 
                 {days.map((day, index) => {
                   const blocks = getBlocksForDay(day);
-                  const hasOverlap = blocks.length > 1;
+                  const hasOverlap = hasOverlappingAvailability(blocks);
                   const isToday = isSameDay(day, new Date());
 
                   return (

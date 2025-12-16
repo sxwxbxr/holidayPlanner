@@ -97,20 +97,55 @@ export function useLobby(lobbyCode: string | null) {
   }): Promise<boolean> => {
     if (!lobbyCode) return false;
 
+    // Create the new block object for optimistic update
+    const newBlock = {
+      id: block.id,
+      userId: block.userId,
+      startTime: block.startTime.toISOString(),
+      endTime: block.endTime.toISOString(),
+      blockType: block.blockType || "available",
+      isAllDay: block.isAllDay || false,
+      title: block.title,
+      description: block.description,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
     try {
+      // Optimistically add the block to the UI immediately
+      mutate(
+        (currentData: typeof data) => {
+          if (!currentData) return currentData;
+          return {
+            ...currentData,
+            timeBlocks: [...currentData.timeBlocks, newBlock],
+          };
+        },
+        false // Don't revalidate yet
+      );
+
       const res = await fetch(`/api/lobbies/${lobbyCode}/blocks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(block),
+        body: JSON.stringify(newBlock),
       });
+
       if (res.ok) {
-        await mutate(); // Refresh data immediately and wait for it
+        // Revalidate to ensure consistency with server
+        mutate();
         return true;
       } else {
+        // Revert optimistic update on failure
+        mutate();
+        const error = await res.json().catch(() => ({}));
+        console.error("Failed to add time block:", error);
         addNotification("error", "Failed to add time block");
         return false;
       }
     } catch (error) {
+      // Revert optimistic update on error
+      mutate();
+      console.error("Error adding time block:", error);
       addNotification("error", "Failed to add time block");
       return false;
     }
@@ -130,36 +165,70 @@ export function useLobby(lobbyCode: string | null) {
     if (!lobbyCode) return false;
 
     try {
+      // Convert dates to ISO strings for proper JSON serialization
+      const payload = {
+        ...updates,
+        startTime: updates.startTime.toISOString(),
+        endTime: updates.endTime.toISOString(),
+      };
+
       const res = await fetch(`/api/lobbies/${lobbyCode}/blocks/${blockId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates),
+        body: JSON.stringify(payload),
       });
+
       if (res.ok) {
-        await mutate(); // Refresh data immediately and wait for it
+        mutate(); // Refresh data (don't await to prevent blocking)
         return true;
       } else {
+        const error = await res.json().catch(() => ({}));
+        console.error("Failed to update time block:", error);
         addNotification("error", "Failed to update time block");
         return false;
       }
     } catch (error) {
+      console.error("Error updating time block:", error);
       addNotification("error", "Failed to update time block");
       return false;
     }
   };
 
-  const deleteBlock = async (blockId: string) => {
-    if (!lobbyCode) return;
+  const deleteBlock = async (blockId: string): Promise<boolean> => {
+    if (!lobbyCode) return false;
 
     try {
+      // Optimistically update the UI by removing the block immediately
+      mutate(
+        (currentData: typeof data) => {
+          if (!currentData) return currentData;
+          return {
+            ...currentData,
+            timeBlocks: currentData.timeBlocks.filter((b: { id: string }) => b.id !== blockId),
+          };
+        },
+        false // Don't revalidate yet
+      );
+
       const res = await fetch(`/api/lobbies/${lobbyCode}/blocks/${blockId}`, {
         method: "DELETE",
       });
+
       if (res.ok) {
-        await mutate(); // Refresh data immediately and wait for it
+        // Revalidate to ensure consistency with server
+        mutate();
+        return true;
+      } else {
+        // Revert optimistic update on failure
+        mutate();
+        addNotification("error", "Failed to delete time block");
+        return false;
       }
     } catch (error) {
+      // Revert optimistic update on error
+      mutate();
       addNotification("error", "Failed to delete time block");
+      return false;
     }
   };
 

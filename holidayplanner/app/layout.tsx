@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Holiday Planner",
-  description: "Plan your trips and sync plans between multiple people",
+  title: "Time Sync",
+  description: "Sync your time blocks with your friends",
 };
 
 export default function RootLayout({
