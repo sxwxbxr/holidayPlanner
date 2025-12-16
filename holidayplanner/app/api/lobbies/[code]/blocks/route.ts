@@ -9,7 +9,7 @@ export async function POST(
   try {
     const { code } = await params;
     const body = await request.json();
-    const { id, userId, startTime, endTime, blockType, title, description } = body;
+    const { id, userId, startTime, endTime, blockType, isAllDay, title, description } = body;
 
     if (!id || !userId || !startTime || !endTime) {
       return NextResponse.json(
@@ -19,8 +19,8 @@ export async function POST(
     }
 
     await sql`
-      INSERT INTO time_blocks (id, lobby_code, user_id, start_time, end_time, block_type, title, description)
-      VALUES (${id}, ${code}, ${userId}, ${startTime}, ${endTime}, ${blockType || 'available'}, ${title || null}, ${description || null})
+      INSERT INTO time_blocks (id, lobby_code, user_id, start_time, end_time, block_type, is_all_day, title, description)
+      VALUES (${id}, ${code}, ${userId}, ${startTime}, ${endTime}, ${blockType || 'available'}, ${isAllDay || false}, ${title || null}, ${description || null})
     `;
 
     return NextResponse.json({ success: true });

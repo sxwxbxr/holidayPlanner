@@ -91,18 +91,21 @@ export function useLobby(lobbyCode: string | null) {
     startTime: Date;
     endTime: Date;
     blockType?: string;
+    isAllDay?: boolean;
     title?: string;
     description?: string;
   }) => {
     if (!lobbyCode) return;
 
     try {
-      await fetch(`/api/lobbies/${lobbyCode}/blocks`, {
+      const res = await fetch(`/api/lobbies/${lobbyCode}/blocks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(block),
       });
-      mutate(); // Refresh data immediately
+      if (res.ok) {
+        await mutate(); // Refresh data immediately and wait for it
+      }
     } catch (error) {
       addNotification("error", "Failed to add time block");
     }
@@ -114,6 +117,7 @@ export function useLobby(lobbyCode: string | null) {
       startTime: Date;
       endTime: Date;
       blockType?: string;
+      isAllDay?: boolean;
       title?: string;
       description?: string;
     }
@@ -121,14 +125,16 @@ export function useLobby(lobbyCode: string | null) {
     if (!lobbyCode) return;
 
     try {
-      await fetch(`/api/lobbies/${lobbyCode}/blocks/${blockId}`, {
+      const res = await fetch(`/api/lobbies/${lobbyCode}/blocks/${blockId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),
       });
-      mutate();
+      if (res.ok) {
+        await mutate(); // Refresh data immediately and wait for it
+      }
     } catch (error) {
-      addNotification("error", "Failed to update availability");
+      addNotification("error", "Failed to update time block");
     }
   };
 
@@ -136,12 +142,14 @@ export function useLobby(lobbyCode: string | null) {
     if (!lobbyCode) return;
 
     try {
-      await fetch(`/api/lobbies/${lobbyCode}/blocks/${blockId}`, {
+      const res = await fetch(`/api/lobbies/${lobbyCode}/blocks/${blockId}`, {
         method: "DELETE",
       });
-      mutate();
+      if (res.ok) {
+        await mutate(); // Refresh data immediately and wait for it
+      }
     } catch (error) {
-      addNotification("error", "Failed to delete availability");
+      addNotification("error", "Failed to delete time block");
     }
   };
 

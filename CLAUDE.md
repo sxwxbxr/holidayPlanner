@@ -134,12 +134,15 @@ Example: `npx shadcn@latest add "https://animate-ui.com/r/components-radix-dialo
 3. **Time Block Management**:
    - Add/edit/delete time blocks
    - **Block types**: "Available" (when you're free) or "Busy" (when you can't meet)
+   - **All-day events**: Mark whole days as available/busy
+   - **Multi-day support**: Select a date range for events spanning multiple days (e.g., vacation)
    - Delete blocks from day timeline view (only own blocks)
-   - Time range selection (start/end times)
+   - Time range selection (start/end times) for regular blocks
    - Optional titles and descriptions
    - Auto-sync every 3 seconds
    - Immediate refresh after mutations
    - Busy blocks shown in red with different styling
+   - All-day events shown with calendar icon
 
 4. **Calendar View**:
    - Monthly calendar with time blocks
@@ -172,11 +175,12 @@ Example: `npx shadcn@latest add "https://animate-ui.com/r/components-radix-dialo
 ```typescript
 // Lobby: code, name, users[], timeBlocks[]
 // User: id, name, color, isActive, userCode
-// TimeBlock: id, userId, startTime, endTime, blockType, title, description
+// TimeBlock: id, userId, startTime, endTime, blockType, isAllDay, title, description
 // BlockType: "available" | "busy"
 ```
 
 **Recent Updates:**
+- ✅ **All-day & multi-day events**: Mark whole days or date ranges as available/busy
 - ✅ **Block types**: Time blocks can now be "Available" or "Busy"
 - ✅ **Cross-device authentication**: Link your phone and PC as the same user
 - ✅ Device code shown in Lobby Info section
@@ -206,7 +210,7 @@ DATABASE_URL=postgresql://user:password@ep-xxx.neon.tech/neondb?sslmode=require
 - **schema_version**: version (PK), applied_at, description - tracks schema version
 - **lobbies**: code (PK), name, created_at
 - **lobby_users**: id (PK), lobby_code (FK), name, color, is_active, user_code, joined_at, last_seen
-- **time_blocks**: id (PK), lobby_code (FK), user_id (FK), start_time, end_time, block_type, title, description, created_at, updated_at
+- **time_blocks**: id (PK), lobby_code (FK), user_id (FK), start_time, end_time, block_type, is_all_day, title, description, created_at, updated_at
 
 **Note**: The schema script (`lib/db/schema.sql`) is idempotent and can be run on any database state. It handles fresh installs and upgrades automatically.
 

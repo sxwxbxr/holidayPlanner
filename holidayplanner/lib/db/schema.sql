@@ -65,6 +65,10 @@ ADD COLUMN IF NOT EXISTS block_type VARCHAR(20) DEFAULT 'available';
 ALTER TABLE lobby_users
 ADD COLUMN IF NOT EXISTS user_code VARCHAR(8);
 
+-- Migration 005: Add is_all_day column to time_blocks for whole day/multi-day blocks
+ALTER TABLE time_blocks
+ADD COLUMN IF NOT EXISTS is_all_day BOOLEAN DEFAULT FALSE;
+
 -- ============================================================================
 -- DATA FIXES - Ensure existing data has proper defaults
 -- ============================================================================
@@ -77,6 +81,9 @@ UPDATE lobby_users SET last_seen = joined_at WHERE last_seen IS NULL;
 
 -- Set block_type = 'available' for any NULL values (from before migration)
 UPDATE time_blocks SET block_type = 'available' WHERE block_type IS NULL;
+
+-- Set is_all_day = FALSE for any NULL values (from before migration)
+UPDATE time_blocks SET is_all_day = FALSE WHERE is_all_day IS NULL;
 
 -- ============================================================================
 -- INDEXES
@@ -100,4 +107,8 @@ ON CONFLICT (version) DO NOTHING;
 
 INSERT INTO schema_version (version, description)
 VALUES (3, 'Add block_type to time_blocks and user_code to lobby_users')
+ON CONFLICT (version) DO NOTHING;
+
+INSERT INTO schema_version (version, description)
+VALUES (4, 'Add is_all_day to time_blocks for whole day and multi-day blocks')
 ON CONFLICT (version) DO NOTHING;

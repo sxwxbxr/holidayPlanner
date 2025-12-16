@@ -4,12 +4,13 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useNotificationsStore, useLobbyStore } from "@/store";
 import { useLobby } from "@/lib/hooks/use-lobby";
 import { TimeBlock, BlockType } from "@/types";
-import { format } from "date-fns";
+import { format, startOfDay, endOfDay } from "date-fns";
 import { generateUUID } from "@/lib/utils";
-import { Check, X } from "lucide-react";
+import { Check, X, Calendar } from "lucide-react";
 
 interface TimeBlockFormProps {
   lobbyCode: string;
@@ -35,11 +36,15 @@ export function TimeBlockForm({
     : undefined;
 
   const [formData, setFormData] = useState({
-    date: initialDate
+    startDate: initialDate
+      ? format(initialDate, "yyyy-MM-dd")
+      : format(new Date(), "yyyy-MM-dd"),
+    endDate: initialDate
       ? format(initialDate, "yyyy-MM-dd")
       : format(new Date(), "yyyy-MM-dd"),
     startTime: "18:00",
     endTime: "22:00",
+    isAllDay: false,
     blockType: "available" as BlockType,
     title: "",
     description: "",
@@ -47,10 +52,14 @@ export function TimeBlockForm({
 
   useEffect(() => {
     if (existingBlock) {
+      const startDate = new Date(existingBlock.startTime);
+      const endDate = new Date(existingBlock.endTime);
       setFormData({
-        date: format(new Date(existingBlock.startTime), "yyyy-MM-dd"),
-        startTime: format(new Date(existingBlock.startTime), "HH:mm"),
-        endTime: format(new Date(existingBlock.endTime), "HH:mm"),
+        startDate: format(startDate, "yyyy-MM-dd"),
+        endDate: format(endDate, "yyyy-MM-dd"),
+        startTime: format(startDate, "HH:mm"),
+        endTime: format(endDate, "HH:mm"),
+        isAllDay: existingBlock.isAllDay || false,
         blockType: existingBlock.blockType || "available",
         title: existingBlock.title || "",
         description: existingBlock.description || "",
@@ -66,18 +75,34 @@ export function TimeBlockForm({
       return;
     }
 
-    const startTime = new Date(`${formData.date}T${formData.startTime}`);
-    const endTime = new Date(`${formData.date}T${formData.endTime}`);
+    let startTime: Date;
+    let endTime: Date;
 
-    if (endTime <= startTime) {
-      addNotification("error", "End time must be after start time");
-      return;
+    if (formData.isAllDay) {
+      // For all-day events, set start to beginning of start date and end to end of end date
+      startTime = startOfDay(new Date(formData.startDate));
+      endTime = endOfDay(new Date(formData.endDate));
+
+      if (endTime < startTime) {
+        addNotification("error", "End date must be on or after start date");
+        return;
+      }
+    } else {
+      // Regular time-based blocks
+      startTime = new Date(`${formData.startDate}T${formData.startTime}`);
+      endTime = new Date(`${formData.startDate}T${formData.endTime}`);
+
+      if (endTime <= startTime) {
+        addNotification("error", "End time must be after start time");
+        return;
+      }
     }
 
     if (blockId && existingBlock) {
       await updateBlock(blockId, {
         startTime,
         endTime,
+        isAllDay: formData.isAllDay,
         blockType: formData.blockType,
         title: formData.title.trim() || undefined,
         description: formData.description.trim() || undefined,
@@ -89,6 +114,7 @@ export function TimeBlockForm({
         userId: currentUser.id,
         startTime,
         endTime,
+        isAllDay: formData.isAllDay,
         blockType: formData.blockType,
         title: formData.title.trim() || undefined,
         description: formData.description.trim() || undefined,
@@ -148,43 +174,101 @@ export function TimeBlockForm({
         />
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="date">Date</Label>
-        <Input
-          id="date"
-          type="date"
-          value={formData.date}
-          onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-          required
+      {/* All Day Toggle */}
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="allDay"
+          checked={formData.isAllDay}
+          onCheckedChange={(checked) => {
+            setFormData({
+              ...formData,
+              isAllDay: checked === true,
+              // When toggling to all day, sync end date with start date
+              endDate: checked === true ? formData.startDate : formData.endDate,
+            });
+          }}
         />
+        <Label htmlFor="allDay" className="flex items-center gap-2 cursor-pointer">
+          <Calendar className="h-4 w-4" />
+          All Day / Multiple Days
+        </Label>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="startTime">Start Time</Label>
-          <Input
-            id="startTime"
-            type="time"
-            value={formData.startTime}
-            onChange={(e) =>
-              setFormData({ ...formData, startTime: e.target.value })
-            }
-            required
-          />
+      {formData.isAllDay ? (
+        // All Day / Multi-day: Show date range
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="startDate">Start Date</Label>
+            <Input
+              id="startDate"
+              type="date"
+              value={formData.startDate}
+              onChange={(e) => {
+                const newStartDate = e.target.value;
+                setFormData({
+                  ...formData,
+                  startDate: newStartDate,
+                  // If end date is before new start date, update it
+                  endDate: newStartDate > formData.endDate ? newStartDate : formData.endDate,
+                });
+              }}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="endDate">End Date</Label>
+            <Input
+              id="endDate"
+              type="date"
+              value={formData.endDate}
+              min={formData.startDate}
+              onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+              required
+            />
+          </div>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="endTime">End Time</Label>
-          <Input
-            id="endTime"
-            type="time"
-            value={formData.endTime}
-            onChange={(e) =>
-              setFormData({ ...formData, endTime: e.target.value })
-            }
-            required
-          />
-        </div>
-      </div>
+      ) : (
+        // Regular: Show single date with time range
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="date">Date</Label>
+            <Input
+              id="date"
+              type="date"
+              value={formData.startDate}
+              onChange={(e) => setFormData({ ...formData, startDate: e.target.value, endDate: e.target.value })}
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="startTime">Start Time</Label>
+              <Input
+                id="startTime"
+                type="time"
+                value={formData.startTime}
+                onChange={(e) =>
+                  setFormData({ ...formData, startTime: e.target.value })
+                }
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="endTime">End Time</Label>
+              <Input
+                id="endTime"
+                type="time"
+                value={formData.endTime}
+                onChange={(e) =>
+                  setFormData({ ...formData, endTime: e.target.value })
+                }
+                required
+              />
+            </div>
+          </div>
+        </>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor="description">Note (Optional)</Label>

@@ -10,9 +10,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { format } from "date-fns";
+import { format, isSameDay } from "date-fns";
 import { findOverlappingSlots, formatTimeRange } from "@/lib/timeline-utils";
-import { Clock, Users, Trash2 } from "lucide-react";
+import { Clock, Users, Trash2, Calendar } from "lucide-react";
 import { useLobby } from "@/lib/hooks/use-lobby";
 import { useLobbyStore, useNotificationsStore } from "@/store";
 
@@ -52,8 +52,12 @@ export function DayTimelineDialog({
     }
   };
 
-  // Filter only available blocks for overlap detection
-  const availableBlocks = blocks.filter(b => b.blockType !== "busy");
+  // Separate all-day blocks from timed blocks
+  const allDayBlocks = blocks.filter(b => b.isAllDay);
+  const timedBlocks = blocks.filter(b => !b.isAllDay);
+
+  // Filter only available blocks for overlap detection (exclude all-day)
+  const availableBlocks = timedBlocks.filter(b => b.blockType !== "busy");
 
   // Generate hour slots (6 AM to midnight)
   const hours = Array.from({ length: 19 }, (_, i) => i + 6); // 6 to 24
@@ -120,9 +124,62 @@ export function DayTimelineDialog({
             </Card>
           )}
 
+          {/* All-Day Events Section */}
+          {allDayBlocks.length > 0 && (
+            <div>
+              <h3 className="font-semibold mb-3 flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                All-Day Events
+              </h3>
+              <div className="space-y-2">
+                {allDayBlocks.map((block) => {
+                  const isBusy = block.blockType === "busy";
+                  const isMultiDay = !isSameDay(new Date(block.startTime), new Date(block.endTime));
+                  const dateRange = isMultiDay
+                    ? `${format(new Date(block.startTime), "MMM d")} - ${format(new Date(block.endTime), "MMM d")}`
+                    : "All day";
+
+                  return (
+                    <div
+                      key={block.id}
+                      className="p-3 rounded-lg flex items-center gap-3 group"
+                      style={{
+                        backgroundColor: isBusy ? "#ef444420" : getUserColor(block.userId) + "20",
+                        borderLeft: `4px solid ${isBusy ? "#ef4444" : getUserColor(block.userId)}`,
+                      }}
+                    >
+                      <div className="flex-1">
+                        <div className="font-medium flex items-center gap-2">
+                          {isBusy && "❌ "}
+                          {getUserName(block.userId)}
+                          <Badge variant="secondary" className="text-xs">
+                            {dateRange}
+                          </Badge>
+                        </div>
+                        {block.title && (
+                          <div className="text-sm text-muted-foreground">{block.title}</div>
+                        )}
+                      </div>
+                      {currentUser?.id === block.userId && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => handleDelete(block.id, block.title || (isBusy ? "Busy" : "Available"))}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Timeline View */}
           <div>
-            <h3 className="font-semibold mb-3">Full Day Timeline</h3>
+            <h3 className="font-semibold mb-3">Hourly Timeline</h3>
             <div className="relative border rounded-lg overflow-hidden">
               {/* Hour rows */}
               {hours.map((hour) => {
@@ -131,8 +188,8 @@ export function DayTimelineDialog({
                 const nextHourDate = new Date(date);
                 nextHourDate.setHours(hour + 1, 0, 0, 0);
 
-                // Find blocks in this hour
-                const hourBlocks = blocks.filter((block) => {
+                // Find timed blocks (not all-day) in this hour
+                const hourBlocks = timedBlocks.filter((block) => {
                   const start = new Date(block.startTime);
                   const end = new Date(block.endTime);
                   return (

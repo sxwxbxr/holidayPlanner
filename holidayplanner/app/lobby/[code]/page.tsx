@@ -9,7 +9,7 @@ import { TimeBlockDialog } from "@/components/timeblocks/timeblock-dialog";
 import { DayTimelineDialog } from "@/components/timeline/day-timeline-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay, startOfDay, endOfDay, isWithinInterval } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -56,10 +56,26 @@ export default function LobbyPage({ params }: LobbyPageProps) {
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
   const getBlocksForDay = (day: Date) => {
+    const dayStart = startOfDay(day);
+    const dayEnd = endOfDay(day);
+
     return (
-      lobby?.timeBlocks.filter((block) =>
-        isSameDay(new Date(block.startTime), day)
-      ) || []
+      lobby?.timeBlocks.filter((block) => {
+        const blockStart = new Date(block.startTime);
+        const blockEnd = new Date(block.endTime);
+
+        // For all-day/multi-day blocks: check if the day falls within the block's range
+        if (block.isAllDay) {
+          return (
+            isWithinInterval(dayStart, { start: startOfDay(blockStart), end: endOfDay(blockEnd) }) ||
+            isSameDay(blockStart, day) ||
+            isSameDay(blockEnd, day)
+          );
+        }
+
+        // For regular blocks: check if the block's start day matches
+        return isSameDay(blockStart, day);
+      }) || []
     );
   };
 
@@ -173,24 +189,30 @@ export default function LobbyPage({ params }: LobbyPageProps) {
                         {format(day, "d")}
                       </div>
                       <div className="space-y-1">
-                        {blocks.slice(0, 3).map((block) => (
-                          <div
-                            key={block.id}
-                            className="text-xs p-1 rounded truncate"
-                            style={{
-                              backgroundColor: block.blockType === "busy"
-                                ? "#ef444420"
-                                : getUserColor(block.userId) + "20",
-                              borderLeft: `2px solid ${block.blockType === "busy" ? "#ef4444" : getUserColor(block.userId)}`,
-                            }}
-                            title={`${getUserName(block.userId)} (${block.blockType === "busy" ? "Busy" : "Available"}): ${format(
-                              new Date(block.startTime),
-                              "HH:mm"
-                            )} - ${format(new Date(block.endTime), "HH:mm")}`}
-                          >
-                            {block.blockType === "busy" ? "❌ " : ""}{getUserName(block.userId)}
-                          </div>
-                        ))}
+                        {blocks.slice(0, 3).map((block) => {
+                          const isMultiDay = block.isAllDay && !isSameDay(new Date(block.startTime), new Date(block.endTime));
+                          const timeDisplay = block.isAllDay
+                            ? (isMultiDay
+                              ? `${format(new Date(block.startTime), "MMM d")} - ${format(new Date(block.endTime), "MMM d")}`
+                              : "All day")
+                            : `${format(new Date(block.startTime), "HH:mm")} - ${format(new Date(block.endTime), "HH:mm")}`;
+
+                          return (
+                            <div
+                              key={block.id}
+                              className={`text-xs p-1 rounded truncate ${block.isAllDay ? "font-medium" : ""}`}
+                              style={{
+                                backgroundColor: block.blockType === "busy"
+                                  ? "#ef444420"
+                                  : getUserColor(block.userId) + "20",
+                                borderLeft: `2px solid ${block.blockType === "busy" ? "#ef4444" : getUserColor(block.userId)}`,
+                              }}
+                              title={`${getUserName(block.userId)} (${block.blockType === "busy" ? "Busy" : "Available"}): ${timeDisplay}${block.title ? ` - ${block.title}` : ""}`}
+                            >
+                              {block.blockType === "busy" ? "❌ " : ""}{block.isAllDay ? "📅 " : ""}{getUserName(block.userId)}
+                            </div>
+                          );
+                        })}
                         {blocks.length > 3 && (
                           <div className="text-xs text-muted-foreground">
                             +{blocks.length - 3} more

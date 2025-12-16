@@ -20,6 +20,7 @@ export interface TimeBlock {
   startTime: Date;
   endTime: Date;
   blockType: BlockType; // Whether user is available or busy during this time
+  isAllDay: boolean; // Whether this block spans entire day(s)
   title?: string; // e.g., "Available to game", "Work meeting"
   description?: string;
   createdAt: Date;
