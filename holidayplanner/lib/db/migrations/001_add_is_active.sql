@@ -1,3 +1,12 @@
+-- ============================================================================
+-- DEPRECATED: This migration is now included in schema.sql
+--
+-- The main schema.sql script is now idempotent and includes all migrations.
+-- You only need to run: psql $DATABASE_URL < lib/db/schema.sql
+--
+-- This file is kept for historical reference only.
+-- ============================================================================
+
 -- Migration: Add is_active column to lobby_users table
 -- Run this if you already have the database set up from before
 
@@ -9,12 +18,3 @@ ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
 UPDATE lobby_users
 SET is_active = TRUE
 WHERE is_active IS NULL;
-
--- Verify the migration
-SELECT
-  column_name,
-  data_type,
-  column_default
-FROM information_schema.columns
-WHERE table_name = 'lobby_users'
-  AND column_name = 'is_active';

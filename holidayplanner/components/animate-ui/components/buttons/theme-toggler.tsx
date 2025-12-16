@@ -13,6 +13,7 @@ import {
 } from '@/components/animate-ui/primitives/effects/theme-toggler';
 import { buttonVariants } from '@/components/animate-ui/components/buttons/icon';
 import { cn } from '@/lib/utils';
+import { useMounted } from '@/lib/hooks/use-mounted';
 
 const getIcon = (
   effective: ThemeSelection,
@@ -55,7 +56,21 @@ function ThemeTogglerButton({
   className,
   ...props
 }: ThemeTogglerButtonProps) {
+  const mounted = useMounted();
   const { theme, resolvedTheme, setTheme } = useTheme();
+
+  // Prevent hydration mismatch by not rendering until mounted
+  if (!mounted) {
+    return (
+      <button
+        data-slot="theme-toggler-button"
+        className={cn(buttonVariants({ variant, size, className }))}
+        {...props}
+      >
+        <Sun className="opacity-0" />
+      </button>
+    );
+  }
 
   return (
     <ThemeTogglerPrimitive

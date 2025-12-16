@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,12 +15,29 @@ import { User } from "@/types";
 export function LobbyJoin() {
   const mounted = useMounted();
   const router = useRouter();
-  const { setCurrentUser } = useLobbyStore();
+  const { setCurrentUser, getUserForLobby, setUserForLobby } = useLobbyStore();
   const { createLobby } = useLobby(null);
   const [name, setName] = useState("");
   const [lobbyCode, setLobbyCode] = useState("");
   const [mode, setMode] = useState<"join" | "create" | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [existingUser, setExistingUser] = useState<User | null>(null);
+
+  // Check for existing user session when lobby code changes
+  useEffect(() => {
+    if (mode === "join" && lobbyCode.length === 6) {
+      const normalizedCode = lobbyCode.trim().toUpperCase();
+      const existing = getUserForLobby(normalizedCode);
+      if (existing) {
+        setExistingUser(existing);
+        setName(existing.name);
+      } else {
+        setExistingUser(null);
+      }
+    } else {
+      setExistingUser(null);
+    }
+  }, [lobbyCode, mode, getUserForLobby]);
 
   if (!mounted) {
     return null;
@@ -30,11 +47,23 @@ export function LobbyJoin() {
     e.preventDefault();
     if (!name.trim()) return;
 
-    const user: User = {
-      id: generateUUID(),
-      name: name.trim(),
-      color: getRandomColor(),
-    };
+    let user: User;
+
+    if (mode === "join" && existingUser) {
+      // Reuse existing user ID but update the name if changed
+      user = {
+        id: existingUser.id,
+        name: name.trim(),
+        color: existingUser.color,
+      };
+    } else {
+      // Create new user
+      user = {
+        id: generateUUID(),
+        name: name.trim(),
+        color: getRandomColor(),
+      };
+    }
 
     setCurrentUser(user);
 
@@ -43,10 +72,15 @@ export function LobbyJoin() {
       const code = await createLobby();
       setIsCreating(false);
       if (code) {
+        // Store user identity for this lobby
+        setUserForLobby(code, user);
         router.push(`/lobby/${code}`);
       }
     } else if (mode === "join" && lobbyCode.trim()) {
-      router.push(`/lobby/${lobbyCode.trim().toUpperCase()}`);
+      const normalizedCode = lobbyCode.trim().toUpperCase();
+      // Store user identity for this lobby
+      setUserForLobby(normalizedCode, user);
+      router.push(`/lobby/${normalizedCode}`);
     }
   };
 
@@ -105,7 +139,7 @@ export function LobbyJoin() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                autoFocus
+                autoFocus={mode === "create"}
               />
             </div>
 
@@ -119,7 +153,13 @@ export function LobbyJoin() {
                   onChange={(e) => setLobbyCode(e.target.value.toUpperCase())}
                   maxLength={6}
                   required
+                  autoFocus
                 />
+                {existingUser && (
+                  <p className="text-sm text-green-600 dark:text-green-400">
+                    Welcome back! Rejoining as {existingUser.name}
+                  </p>
+                )}
               </div>
             )}
 

@@ -49,12 +49,14 @@ Create `.env.local` file:
 DATABASE_URL=postgresql://user:password@ep-xxx.us-east-2.aws.neon.tech/neondb?sslmode=require
 ```
 
-### 3. Run Database Migrations
+### 3. Run Database Schema
 
-Execute the schema from `lib/db/schema.sql` in your Neon SQL Editor or using psql:
+The schema script is idempotent - safe to run on fresh or existing databases:
 ```bash
 psql $DATABASE_URL < lib/db/schema.sql
 ```
+
+This will create tables if missing, add any new columns, and set up indexes.
 
 ### 4. Start Development Server
 
@@ -189,11 +191,12 @@ DATABASE_URL=postgresql://user:password@ep-xxx.neon.tech/neondb?sslmode=require
 ```
 
 ### Database Schema:
+- **schema_version**: version (PK), applied_at, description - tracks schema version
 - **lobbies**: code (PK), name, created_at
 - **lobby_users**: id (PK), lobby_code (FK), name, color, is_active, joined_at, last_seen
 - **time_blocks**: id (PK), lobby_code (FK), user_id (FK), start_time, end_time, title, description, created_at, updated_at
 
-**Note**: If you have an existing database, run the migration in `lib/db/migrations/001_add_is_active.sql` to add the `is_active` column.
+**Note**: The schema script (`lib/db/schema.sql`) is idempotent and can be run on any database state. It handles fresh installs and upgrades automatically.
 
 ### Component Usage:
 - **Dialog**: Time block forms (use `from="bottom"`)

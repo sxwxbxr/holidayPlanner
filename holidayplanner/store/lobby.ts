@@ -6,10 +6,12 @@ interface LobbyState {
   // Current lobby state
   lobby: Lobby | null;
   currentUser: User | null;
+  // Remember user identity per lobby to prevent duplicates on rejoin
+  usersByLobby: Record<string, User>;
 
   // Actions
-  setLobby: (lobby: Lobby) => void;
-  setCurrentUser: (user: User) => void;
+  setLobby: (lobby: Lobby | null) => void;
+  setCurrentUser: (user: User | null) => void;
   updateTimeBlocks: (timeBlocks: TimeBlock[]) => void;
   addTimeBlock: (block: TimeBlock) => void;
   updateTimeBlock: (block: TimeBlock) => void;
@@ -17,13 +19,18 @@ interface LobbyState {
   addUser: (user: User) => void;
   removeUser: (userId: string) => void;
   clearLobby: () => void;
+  // User session management
+  setUserForLobby: (lobbyCode: string, user: User) => void;
+  getUserForLobby: (lobbyCode: string) => User | null;
+  clearUserForLobby: (lobbyCode: string) => void;
 }
 
 export const useLobbyStore = create<LobbyState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       lobby: null,
       currentUser: null,
+      usersByLobby: {},
 
       setLobby: (lobby) => set({ lobby }),
 
@@ -110,6 +117,19 @@ export const useLobbyStore = create<LobbyState>()(
         ),
 
       clearLobby: () => set({ lobby: null, currentUser: null }),
+
+      setUserForLobby: (lobbyCode, user) =>
+        set((state) => ({
+          usersByLobby: { ...state.usersByLobby, [lobbyCode]: user },
+        })),
+
+      getUserForLobby: (lobbyCode) => get().usersByLobby[lobbyCode] || null,
+
+      clearUserForLobby: (lobbyCode) =>
+        set((state) => {
+          const { [lobbyCode]: _, ...rest } = state.usersByLobby;
+          return { usersByLobby: rest };
+        }),
     }),
     { name: "lobby-store" }
   )
