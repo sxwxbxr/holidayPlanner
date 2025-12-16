@@ -94,8 +94,8 @@ export function useLobby(lobbyCode: string | null) {
     isAllDay?: boolean;
     title?: string;
     description?: string;
-  }) => {
-    if (!lobbyCode) return;
+  }): Promise<boolean> => {
+    if (!lobbyCode) return false;
 
     try {
       const res = await fetch(`/api/lobbies/${lobbyCode}/blocks`, {
@@ -105,9 +105,14 @@ export function useLobby(lobbyCode: string | null) {
       });
       if (res.ok) {
         await mutate(); // Refresh data immediately and wait for it
+        return true;
+      } else {
+        addNotification("error", "Failed to add time block");
+        return false;
       }
     } catch (error) {
       addNotification("error", "Failed to add time block");
+      return false;
     }
   };
 
@@ -121,8 +126,8 @@ export function useLobby(lobbyCode: string | null) {
       title?: string;
       description?: string;
     }
-  ) => {
-    if (!lobbyCode) return;
+  ): Promise<boolean> => {
+    if (!lobbyCode) return false;
 
     try {
       const res = await fetch(`/api/lobbies/${lobbyCode}/blocks/${blockId}`, {
@@ -132,9 +137,14 @@ export function useLobby(lobbyCode: string | null) {
       });
       if (res.ok) {
         await mutate(); // Refresh data immediately and wait for it
+        return true;
+      } else {
+        addNotification("error", "Failed to update time block");
+        return false;
       }
     } catch (error) {
       addNotification("error", "Failed to update time block");
+      return false;
     }
   };
 

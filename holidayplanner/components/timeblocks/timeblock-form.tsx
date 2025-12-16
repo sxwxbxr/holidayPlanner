@@ -30,6 +30,7 @@ export function TimeBlockForm({
   const { addBlock, updateBlock } = useLobby(lobbyCode);
   const { addNotification } = useNotificationsStore();
   const { lobby, currentUser } = useLobbyStore();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const existingBlock = blockId
     ? lobby?.timeBlocks.find((b) => b.id === blockId)
@@ -75,6 +76,8 @@ export function TimeBlockForm({
       return;
     }
 
+    if (isSubmitting) return; // Prevent double submission
+
     let startTime: Date;
     let endTime: Date;
 
@@ -92,14 +95,18 @@ export function TimeBlockForm({
       startTime = new Date(`${formData.startDate}T${formData.startTime}`);
       endTime = new Date(`${formData.startDate}T${formData.endTime}`);
 
+      // If end time is before or equal to start time, assume it's the next day
       if (endTime <= startTime) {
-        addNotification("error", "End time must be after start time");
-        return;
+        endTime.setDate(endTime.getDate() + 1);
       }
     }
 
+    setIsSubmitting(true);
+
+    let success = false;
+
     if (blockId && existingBlock) {
-      await updateBlock(blockId, {
+      success = await updateBlock(blockId, {
         startTime,
         endTime,
         isAllDay: formData.isAllDay,
@@ -107,9 +114,11 @@ export function TimeBlockForm({
         title: formData.title.trim() || undefined,
         description: formData.description.trim() || undefined,
       });
-      addNotification("success", "Time block updated");
+      if (success) {
+        addNotification("success", "Time block updated");
+      }
     } else {
-      await addBlock({
+      success = await addBlock({
         id: generateUUID(),
         userId: currentUser.id,
         startTime,
@@ -119,10 +128,16 @@ export function TimeBlockForm({
         title: formData.title.trim() || undefined,
         description: formData.description.trim() || undefined,
       });
-      addNotification("success", "Time block added");
+      if (success) {
+        addNotification("success", "Time block added");
+      }
     }
 
-    onSuccess?.();
+    setIsSubmitting(false);
+
+    if (success) {
+      onSuccess?.();
+    }
   };
 
   return (
@@ -284,12 +299,12 @@ export function TimeBlockForm({
 
       <div className="flex justify-end gap-2 pt-4">
         {onCancel && (
-          <Button type="button" variant="outline" onClick={onCancel}>
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
             Cancel
           </Button>
         )}
-        <Button type="submit">
-          {blockId ? "Update" : "Add"} Time Block
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Saving..." : (blockId ? "Update" : "Add")} {!isSubmitting && "Time Block"}
         </Button>
       </div>
     </form>
