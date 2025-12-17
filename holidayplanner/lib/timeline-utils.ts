@@ -1,4 +1,5 @@
 import { TimeBlock } from "@/types";
+import { startOfDay, endOfDay } from "date-fns";
 
 export interface TimeSlot {
   start: Date;
@@ -13,8 +14,12 @@ function timeToMinutes(date: Date): number {
 }
 
 // Find all overlapping time periods in a day
-export function findOverlappingSlots(blocks: TimeBlock[]): TimeSlot[] {
+// targetDay is required to properly handle blocks that cross midnight
+export function findOverlappingSlots(blocks: TimeBlock[], targetDay: Date): TimeSlot[] {
   if (blocks.length === 0) return [];
+
+  const dayStart = startOfDay(targetDay);
+  const dayEnd = endOfDay(targetDay);
 
   // Create events for start/end times
   interface TimeEvent {
@@ -26,24 +31,48 @@ export function findOverlappingSlots(blocks: TimeBlock[]): TimeSlot[] {
   const events: TimeEvent[] = [];
 
   blocks.forEach((block) => {
-    const start = new Date(block.startTime);
-    const end = new Date(block.endTime);
+    const blockStart = new Date(block.startTime);
+    const blockEnd = new Date(block.endTime);
 
-    events.push({
-      time: timeToMinutes(start),
-      type: "start",
-      userId: block.userId,
-    });
+    // Clamp block times to the target day's boundaries
+    // This handles blocks that span multiple days or cross midnight
+    const clampedStart = blockStart < dayStart ? dayStart : blockStart;
+    const clampedEnd = blockEnd > dayEnd ? dayEnd : blockEnd;
 
-    events.push({
-      time: timeToMinutes(end),
-      type: "end",
-      userId: block.userId,
-    });
+    // Only include if the clamped range is valid (start before end)
+    if (clampedStart < clampedEnd) {
+      let startMinutes = timeToMinutes(clampedStart);
+      let endMinutes = timeToMinutes(clampedEnd);
+
+      // If end is at midnight (00:00) and equals dayEnd, treat as 24:00 (1440 minutes)
+      if (endMinutes === 0 && clampedEnd.getTime() === dayEnd.getTime()) {
+        endMinutes = 1440; // 24:00
+      }
+      // If end is at 23:59:59 (end of day), treat as 24:00
+      if (clampedEnd.getHours() === 23 && clampedEnd.getMinutes() === 59) {
+        endMinutes = 1440;
+      }
+
+      events.push({
+        time: startMinutes,
+        type: "start",
+        userId: block.userId,
+      });
+
+      events.push({
+        time: endMinutes,
+        type: "end",
+        userId: block.userId,
+      });
+    }
   });
 
-  // Sort events by time
-  events.sort((a, b) => a.time - b.time);
+  // Sort events by time, with "end" events before "start" events at the same time
+  // This prevents brief overlaps at exact boundaries
+  events.sort((a, b) => {
+    if (a.time !== b.time) return a.time - b.time;
+    return a.type === "end" ? -1 : 1;
+  });
 
   // Process events to find overlapping periods
   const slots: TimeSlot[] = [];
@@ -53,12 +82,16 @@ export function findOverlappingSlots(blocks: TimeBlock[]): TimeSlot[] {
   events.forEach((event) => {
     // If we have active users and time has changed, create a slot
     if (activeUsers.size > 0 && lastTime !== null && event.time > lastTime) {
-      const baseDate = blocks[0] ? new Date(blocks[0].startTime) : new Date();
-      const slotStart = new Date(baseDate);
-      const slotEnd = new Date(baseDate);
+      const slotStart = new Date(dayStart);
+      const slotEnd = new Date(dayStart);
 
       slotStart.setHours(Math.floor(lastTime / 60), lastTime % 60, 0, 0);
-      slotEnd.setHours(Math.floor(event.time / 60), event.time % 60, 0, 0);
+      // Handle 24:00 (midnight end)
+      if (event.time >= 1440) {
+        slotEnd.setHours(23, 59, 59, 999);
+      } else {
+        slotEnd.setHours(Math.floor(event.time / 60), event.time % 60, 0, 0);
+      }
 
       slots.push({
         start: slotStart,

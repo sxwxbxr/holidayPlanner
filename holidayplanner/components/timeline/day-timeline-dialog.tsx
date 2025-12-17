@@ -65,7 +65,8 @@ export function DayTimelineDialog({
   const hours = Array.from({ length: 19 }, (_, i) => i + 6); // 6 to 24
 
   // Find overlapping periods (only consider available blocks)
-  const overlaps = findOverlappingSlots(availableBlocks).filter((slot) => slot.isOverlap);
+  // Pass the date to properly handle blocks that cross midnight
+  const overlaps = findOverlappingSlots(availableBlocks, date).filter((slot) => slot.isOverlap);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
